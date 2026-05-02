@@ -15,46 +15,88 @@ const PORT = 3000;
 app.use(express.json());
 app.use(cors());
 
-// MongoDB connection
-const MONGO_URI = process.env.MONGO_URI;
+// MongoDB connection Mocked
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_change_in_production';
 
-if (MONGO_URI) {
-  mongoose.connect(MONGO_URI)
-    .then(() => console.log('Connected to MongoDB'))
-    .catch(err => console.error('MongoDB connection error. Please verify your MONGO_URI:', err.message));
-} else {
-  console.warn('WARN: MONGO_URI is not set. Database operations will fail if called.');
+const FAKE_DB: { users: any[] } = { users: [] };
+
+class User {
+  _id: string;
+  name?: string;
+  phoneOrEmail?: string;
+  password?: string;
+  referralCode?: string;
+  referralRewards: number;
+  notifications: any;
+  subscription: any;
+
+  constructor(data: any) {
+    this._id = Date.now().toString();
+    this.name = data.name;
+    this.phoneOrEmail = data.phoneOrEmail;
+    this.password = data.password;
+    this.referralRewards = 0;
+    this.notifications = {};
+    this.subscription = {};
+  }
+
+  async save() {
+    // Check if it's already there to handle mongoose updates. Actually for new user:
+    const index = FAKE_DB.users.findIndex((u:any) => u._id === this._id);
+    if(index === -1) {
+      // Create copy
+      FAKE_DB.users.push({...this});
+    } else {
+      FAKE_DB.users[index] = {...this};
+    }
+  }
+
+  static async findOne(query: any) {
+    return FAKE_DB.users.find(u => {
+      if (query.phoneOrEmail && query._id) return u.phoneOrEmail === query.phoneOrEmail && u._id !== query._id.$ne;
+      return u.phoneOrEmail === query.phoneOrEmail;
+    }) || null;
+  }
+
+  static async findById(id: string) {
+    // Return an instance so save() works on it (like referralCode update)
+    const data = FAKE_DB.users.find(u => u._id === id);
+    if (!data) return null;
+    const user = new User(data);
+    user._id = data._id;
+    user.referralCode = data.referralCode;
+    user.referralRewards = data.referralRewards;
+    user.notifications = data.notifications || {};
+    user.subscription = data.subscription || {};
+    // Add select to chain
+    (user as any).select = function() { return this; };
+    return user;
+  }
+
+  static async findByIdAndUpdate(id: string, update: any, options: any) {
+    const userIndex = FAKE_DB.users.findIndex(u => u._id === id);
+    if (userIndex === -1) throw new Error('User not found');
+    
+    if (update.$set) {
+      for (const [key, val] of Object.entries(update.$set)) {
+        const parts = key.split('.');
+        if (parts.length === 2) {
+          FAKE_DB.users[userIndex][parts[0]] = FAKE_DB.users[userIndex][parts[0]] || {};
+          FAKE_DB.users[userIndex][parts[0]][parts[1]] = val;
+        } else {
+          FAKE_DB.users[userIndex][key] = val;
+        }
+      }
+    }
+    const updatedUser = FAKE_DB.users[userIndex];
+    return { select: () => updatedUser };
+  }
 }
 
-// Mongoose Models
-const notificationPrefsSchema = new mongoose.Schema({
-  orderUpdates: { type: Boolean, default: true },
-  menuAnnouncements: { type: Boolean, default: false }
-}, { _id: false });
+// Mock replacing real mongoose
+// @ts-ignore
+mongoose.models = { User: User };
 
-const subscriptionSchema = new mongoose.Schema({
-  planId: { type: String, default: null },
-  planName: { type: String, default: null },
-  status: { type: String, default: 'inactive' }, // "active", "inactive"
-  startDate: { type: Date, default: null },
-  renewalDate: { type: Date, default: null },
-  isPaused: { type: Boolean, default: false },
-  pauseStartDate: { type: Date, default: null },
-  pauseEndDate: { type: Date, default: null }
-}, { _id: false });
-
-const userSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  phoneOrEmail: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  referralCode: { type: String },
-  referralRewards: { type: Number, default: 0 },
-  notifications: { type: notificationPrefsSchema, default: () => ({}) },
-  subscription: { type: subscriptionSchema, default: () => ({}) }
-});
-
-const User = mongoose.models.User || mongoose.model('User', userSchema);
 
 // JWT Middleware
 const authenticateToken = (req: any, res: any, next: any) => {
