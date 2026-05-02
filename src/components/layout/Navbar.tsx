@@ -2,7 +2,7 @@ import { PageType } from '../../App';
 import { BRAND_DATA } from '../../constants';
 import { Menu, X, UtensilsCrossed } from 'lucide-react';
 import { useState } from 'react';
-import gharKaSwaadLogo from '../../assets/logo.png';
+import { logoBase64 } from '../../assets/logoBase64';
 
 interface NavbarProps {
   currentPage: PageType;
@@ -33,7 +33,7 @@ export default function Navbar({ currentPage, onNavigate }: NavbarProps) {
             className="flex items-center group transition-all"
           >
             <img 
-              src={gharKaSwaadLogo} 
+              src={logoBase64} 
               alt="Ghar Ka Swaad Logo" 
               className="navbar-logo"
             />

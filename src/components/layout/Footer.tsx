@@ -1,7 +1,7 @@
 import { PageType } from '../../App';
 import { BRAND_DATA } from '../../constants';
 import { Instagram, Facebook, Phone, Mail, MapPin } from 'lucide-react';
-import gharKaSwaadLogo from '../../assets/logo.png';
+import { logoBase64 } from '../../assets/logoBase64';
 
 interface FooterProps {
   onNavigate: (page: PageType) => void;
@@ -14,7 +14,7 @@ export default function Footer({ onNavigate }: FooterProps) {
         <div className="col-span-1 md:col-span-1">
           <div className="mb-8 inline-block bg-white p-2 rounded-xl">
             <img 
-              src={gharKaSwaadLogo} 
+              src={logoBase64} 
               alt="Ghar Ka Swaad Logo" 
               className="footer-logo"
             />

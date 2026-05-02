@@ -2,7 +2,7 @@ import { PageType } from '../../App';
 import { BRAND_DATA } from '../../constants';
 import { motion } from 'motion/react';
 import { CheckCircle2, Star, ArrowRight, Clock, Utensils, Heart } from 'lucide-react';
-import gharKaSwaadLogo from '../../assets/logo.png';
+import { logoBase64 } from '../../assets/logoBase64';
 
 interface HomePageProps {
   onNavigate: (page: PageType) => void;
@@ -20,7 +20,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             className="absolute w-full h-full object-cover opacity-10"
           />
           <img 
-            src={gharKaSwaadLogo} 
+            src={logoBase64} 
             alt="Background Logo" 
             className="absolute w-[120%] md:w-[80%] max-w-[800px] object-contain opacity-10 rotate-[-5deg]"
           />
