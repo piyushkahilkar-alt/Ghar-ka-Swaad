@@ -35,7 +35,7 @@ export default function Navbar({ currentPage, onNavigate }: NavbarProps) {
             <img 
               src={logoBase64} 
               alt="Ghar Ka Swaad Logo" 
-              className="navbar-logo"
+              className="h-16 md:h-[75px] w-auto object-contain"
             />
           </button>
 

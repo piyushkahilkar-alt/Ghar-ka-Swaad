@@ -418,6 +418,20 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
           </div>
 
           <div className="bg-white p-6 md:p-8 rounded-3xl shadow-lg border border-gray-100">
+            {orders?.history?.[0]?.status === 'Preparing' || orders?.history?.[0]?.status === 'Out for Delivery' ? (
+              <div className="mb-8">
+                <div className="bg-brand-primary p-6 rounded-2xl text-white shadow-xl flex items-center justify-between">
+                   <div>
+                     <h3 className="text-xl font-bold mb-1">Live Tracking</h3>
+                     <p className="opacity-90">{orders.history[0].meal}</p>
+                   </div>
+                   <div className="text-right">
+                     <span className="block text-2xl font-bold bg-white text-brand-primary px-4 py-1.5 rounded-full shadow-inner">{orders.history[0].status}</span>
+                   </div>
+                </div>
+              </div>
+            ) : null}
+
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <History className="text-brand-primary" />
@@ -437,7 +451,7 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
                       <span className="inline-block px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full mb-2">
                         {order.status}
                       </span>
-                      {order.id === orders.history[0].id && (
+                      {order.id === orders.history[0].id && !['Preparing', 'Out for Delivery'].includes(order.status) && (
                         <div>
                           <button 
                             onClick={handleReorder}

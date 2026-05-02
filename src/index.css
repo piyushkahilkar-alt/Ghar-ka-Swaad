@@ -22,27 +22,5 @@
 }
 
 @layer components {
-  .navbar-logo {
-    height: 75px;
-    width: 280px;
-    object-fit: contain;
-    object-position: left center;
-    mix-blend-mode: multiply;
-  }
-
-  @media (max-width: 768px) {
-    .navbar-logo {
-      height: 60px;
-      width: 220px;
-    }
-  }
-
-  .footer-logo {
-    height: 80px;
-    width: 300px;
-    object-fit: contain;
-    object-position: left center;
-    mix-blend-mode: multiply;
-  }
 }
 

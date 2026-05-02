@@ -2,24 +2,38 @@ import { useState } from 'react';
 import { BRAND_DATA } from '../../constants';
 import { motion, AnimatePresence } from 'motion/react';
 import { Check, Zap, Rocket, Star, Utensils, Leaf, X } from 'lucide-react';
+import QRCode from 'react-qr-code';
 
 export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => void }) {
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [checkoutStep, setCheckoutStep] = useState(2); // Start directly at payment step
 
-  const handlePaymentComplete = () => {
+  const handlePaymentComplete = async () => {
     setCheckoutStep(3); // Processing step
+    
+    const token = localStorage.getItem('token');
+    if (token) {
+       try {
+           await fetch('/api/plans/subscribe', {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+               body: JSON.stringify({ planId: selectedPlan.id.toString(), planName: selectedPlan.name })
+           });
+       } catch (err) {
+           console.error('Failed to subscribe via API');
+       }
+    }
+
     setTimeout(() => {
       setCheckoutStep(4); // Success step
       
-      // Redirect to WhatsApp with message
-      const message = `Hi, I'd like to subscribe to the *${selectedPlan.name}*.\n\nI have completed the payment of ₹${selectedPlan.monthly_price} via UPI. (Please find screenshot attached if needed.)`;
-      window.open(`https://wa.me/${BRAND_DATA.brand.whatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
+      // If not logged in, we can still redirect to whatsapp, else we just stay on success step
+      // Wait, let's keep WhatsApp for fallback or just remove it if user asked for dashboard feature
+      if (!token) {
+        const message = `Hi, I'd like to subscribe to the *${selectedPlan.name}*.\n\nI have completed the payment of ₹${selectedPlan.monthly_price} via UPI. (Please find screenshot attached if needed.)`;
+        window.open(`https://wa.me/${BRAND_DATA.brand.whatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
+      }
       
-      setTimeout(() => {
-        setSelectedPlan(null);
-        setCheckoutStep(2);
-      }, 1000);
     }, 2000);
   };
 
@@ -139,8 +153,8 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
                   <h3 className="text-2xl font-serif font-bold mb-2">Complete Payment</h3>
                   <p className="text-gray-500 mb-6">Scan the QR code below using PhonePe, GPay, Paytm, or any UPI app to pay <strong className="text-brand-accent">₹{selectedPlan.monthly_price}</strong></p>
                   
-                  <div className="bg-white p-4 rounded-3xl border-2 border-brand-primary/20 shadow-xl mb-6 relative overflow-hidden">
-                    <img src={`https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=upi://pay?pa=8275116821@ybl%26pn=Ghar+Ka+Swaad%26cur=INR%26am=${selectedPlan.monthly_price}`} alt="Payment QR Code" className="w-64 h-64 object-contain rounded-xl relative z-10" />
+                  <div className="bg-white p-4 rounded-3xl border-2 border-brand-primary/20 shadow-xl mb-6 relative overflow-hidden flex justify-center items-center w-64 h-64 mx-auto">
+                    <QRCode value={`upi://pay?pa=8275116821@ybl&pn=Ghar+Ka+Swaad&cur=INR&am=${selectedPlan.monthly_price}`} size={200} />
                   </div>
                   
                   <div className="bg-brand-secondary/50 px-6 py-3 rounded-xl mb-6 border border-brand-primary/20 flex flex-col w-full">

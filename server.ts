@@ -34,6 +34,11 @@ const notificationPrefsSchema = new mongoose.Schema({
 }, { _id: false });
 
 const subscriptionSchema = new mongoose.Schema({
+  planId: { type: String, default: null },
+  planName: { type: String, default: null },
+  status: { type: String, default: 'inactive' }, // "active", "inactive"
+  startDate: { type: Date, default: null },
+  renewalDate: { type: Date, default: null },
   isPaused: { type: Boolean, default: false },
   pauseStartDate: { type: Date, default: null },
   pauseEndDate: { type: Date, default: null }
@@ -211,6 +216,36 @@ app.put('/api/profile/subscription/pause', authenticateToken, async (req: any, r
   }
 });
 
+app.post('/api/plans/subscribe', authenticateToken, async (req: any, res: any) => {
+  try {
+    const { planId, planName } = req.body;
+    const startDate = new Date();
+    const renewalDate = new Date();
+    renewalDate.setDate(renewalDate.getDate() + 30); // 30 days plan typically
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { 
+        $set: { 
+          'subscription.planId': planId,
+          'subscription.planName': planName,
+          'subscription.status': 'active',
+          'subscription.startDate': startDate,
+          'subscription.renewalDate': renewalDate,
+          'subscription.isPaused': false,
+          'subscription.pauseStartDate': null,
+          'subscription.pauseEndDate': null
+        } 
+      },
+      { new: true }
+    ).select('-password');
+    res.json(user);
+  } catch (error) {
+    console.error('Subscribe error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.put('/api/profile/subscription/resume', authenticateToken, async (req: any, res: any) => {
   try {
     const user = await User.findByIdAndUpdate(
@@ -232,15 +267,22 @@ app.put('/api/profile/subscription/resume', authenticateToken, async (req: any, 
 });
 
 // 4. User Orders (Dummy Data)
-app.get('/api/orders', authenticateToken, (req: any, res: any) => {
-  // Dummy order history
-  res.json({
-    activePlan: "Standard Veg Plan",
-    history: [
-      { id: 1, date: '2023-10-25', meal: 'Standard Veg Daily Meal', status: 'Delivered' },
-      { id: 2, date: '2023-10-24', meal: 'Standard Veg Daily Meal', status: 'Delivered' },
-    ]
-  });
+app.get('/api/orders', authenticateToken, async (req: any, res: any) => {
+  try {
+    const user = await User.findById(req.user.id);
+    
+    // Generate some history based on whether they have an active plan or not
+    const history = user?.subscription?.planName ? [
+      { id: 1, date: new Date().toISOString().split('T')[0], meal: user.subscription.planName, status: 'Preparing' },
+    ] : [];
+
+    res.json({
+      activePlan: user?.subscription?.planName || null,
+      history: history
+    });
+  } catch(e) {
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 // Setup Vite Middleware for frontend React app
