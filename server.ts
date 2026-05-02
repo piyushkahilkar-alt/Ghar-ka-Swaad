@@ -16,21 +16,40 @@ app.use(express.json());
 app.use(cors());
 
 // MongoDB connection
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/gharkaswaad';
+const MONGO_URI = process.env.MONGO_URI;
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_change_in_production';
 
-mongoose.connect(MONGO_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+if (MONGO_URI) {
+  mongoose.connect(MONGO_URI)
+    .then(() => console.log('Connected to MongoDB'))
+    .catch(err => console.error('MongoDB connection error. Please verify your MONGO_URI:', err.message));
+} else {
+  console.warn('WARN: MONGO_URI is not set. Database operations will fail if called.');
+}
 
 // Mongoose Models
+const notificationPrefsSchema = new mongoose.Schema({
+  orderUpdates: { type: Boolean, default: true },
+  menuAnnouncements: { type: Boolean, default: false }
+}, { _id: false });
+
+const subscriptionSchema = new mongoose.Schema({
+  isPaused: { type: Boolean, default: false },
+  pauseStartDate: { type: Date, default: null },
+  pauseEndDate: { type: Date, default: null }
+}, { _id: false });
+
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   phoneOrEmail: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  referralCode: { type: String },
+  referralRewards: { type: Number, default: 0 },
+  notifications: { type: notificationPrefsSchema, default: () => ({}) },
+  subscription: { type: subscriptionSchema, default: () => ({}) }
 });
 
-const User = mongoose.model('User', userSchema);
+const User = mongoose.models.User || mongoose.model('User', userSchema);
 
 // JWT Middleware
 const authenticateToken = (req: any, res: any, next: any) => {
@@ -110,12 +129,104 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+app.put('/api/profile', authenticateToken, async (req: any, res: any) => {
+  try {
+    const { name, phoneOrEmail } = req.body;
+    
+    if (!name || !phoneOrEmail) {
+      return res.status(400).json({ error: 'Name and contact are required' });
+    }
+
+    const existingUser = await User.findOne({ phoneOrEmail, _id: { $ne: req.user.id } });
+    if (existingUser) {
+      return res.status(400).json({ error: 'This contact is already associated with another account' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: { name, phoneOrEmail } },
+      { new: true }
+    ).select('-password');
+    
+    res.json(user);
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // 3. User Profile
 app.get('/api/profile', authenticateToken, async (req: any, res: any) => {
   try {
-    const user = await User.findById(req.user.id).select('-password');
+    let user = await User.findById(req.user.id).select('-password');
+    if (user && !user.referralCode) {
+      user.referralCode = 'GHS-' + user._id.toString().substring(0, 6).toUpperCase();
+      await user.save();
+    }
     res.json(user);
   } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.put('/api/profile/notifications', authenticateToken, async (req: any, res: any) => {
+  try {
+    const { orderUpdates, menuAnnouncements } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { 
+        $set: { 
+          'notifications.orderUpdates': orderUpdates,
+          'notifications.menuAnnouncements': menuAnnouncements
+        } 
+      },
+      { new: true }
+    ).select('-password');
+    
+    res.json(user);
+  } catch (error) {
+    console.error('Update preferences error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.put('/api/profile/subscription/pause', authenticateToken, async (req: any, res: any) => {
+  try {
+    const { startDate, endDate } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { 
+        $set: { 
+          'subscription.isPaused': true,
+          'subscription.pauseStartDate': startDate,
+          'subscription.pauseEndDate': endDate
+        } 
+      },
+      { new: true }
+    ).select('-password');
+    res.json(user);
+  } catch (error) {
+    console.error('Pause subscription error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.put('/api/profile/subscription/resume', authenticateToken, async (req: any, res: any) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { 
+        $set: { 
+          'subscription.isPaused': false,
+          'subscription.pauseStartDate': null,
+          'subscription.pauseEndDate': null
+        } 
+      },
+      { new: true }
+    ).select('-password');
+    res.json(user);
+  } catch (error) {
+    console.error('Resume subscription error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });

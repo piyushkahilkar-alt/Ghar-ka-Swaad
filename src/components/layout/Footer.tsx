@@ -1,6 +1,7 @@
 import { PageType } from '../../App';
 import { BRAND_DATA } from '../../constants';
 import { Instagram, Facebook, Phone, Mail, MapPin } from 'lucide-react';
+import gharKaSwaadLogo from '../../assets/logo.png';
 
 interface FooterProps {
   onNavigate: (page: PageType) => void;
@@ -13,7 +14,7 @@ export default function Footer({ onNavigate }: FooterProps) {
         <div className="col-span-1 md:col-span-1">
           <div className="mb-8 inline-block bg-white p-2 rounded-xl">
             <img 
-              src="/ghar-ka-swaad-logo.png" 
+              src={gharKaSwaadLogo} 
               alt="Ghar Ka Swaad Logo" 
               className="footer-logo"
             />
@@ -22,8 +23,8 @@ export default function Footer({ onNavigate }: FooterProps) {
             {BRAND_DATA.brand.tagline}. Delivering fresh, hygienic, and affordable home-cooked meals across Nagpur.
           </p>
           <div className="flex gap-4">
-            <a href="#" className="hover:text-white transition-colors"><Instagram size={20} /></a>
-            <a href="#" className="hover:text-white transition-colors"><Facebook size={20} /></a>
+            <a href="#" className="w-10 h-10 flex items-center justify-center text-brand-primary bg-brand-primary/10 rounded-full hover:bg-brand-primary hover:text-white transition-colors"><Instagram size={18} /></a>
+            <a href="#" className="w-10 h-10 flex items-center justify-center text-brand-primary bg-brand-primary/10 rounded-full hover:bg-brand-primary hover:text-white transition-colors"><Facebook size={18} /></a>
           </div>
         </div>
 

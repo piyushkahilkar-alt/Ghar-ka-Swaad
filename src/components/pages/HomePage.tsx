@@ -2,6 +2,7 @@ import { PageType } from '../../App';
 import { BRAND_DATA } from '../../constants';
 import { motion } from 'motion/react';
 import { CheckCircle2, Star, ArrowRight, Clock, Utensils, Heart } from 'lucide-react';
+import gharKaSwaadLogo from '../../assets/logo.png';
 
 interface HomePageProps {
   onNavigate: (page: PageType) => void;
@@ -19,8 +20,8 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             className="absolute w-full h-full object-cover opacity-10"
           />
           <img 
-            src="/ghar-ka-swaad-logo.png" 
-            alt="" 
+            src={gharKaSwaadLogo} 
+            alt="Background Logo" 
             className="absolute w-[120%] md:w-[80%] max-w-[800px] object-contain opacity-10 rotate-[-5deg]"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-brand-secondary via-brand-secondary/90 to-brand-secondary/40"></div>
@@ -181,7 +182,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                 </div>
                 <p className="text-gray-700 font-serif text-lg italic mb-6">"{t.review}"</p>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                  <img src={t.image} alt={t.name} className="w-10 h-10 object-cover rounded-full border-2 border-brand-primary/20" />
                   <div>
                     <h4 className="font-bold text-sm">{t.name}</h4>
                     <p className="text-xs text-gray-400 uppercase tracking-widest">Happy Customer</p>

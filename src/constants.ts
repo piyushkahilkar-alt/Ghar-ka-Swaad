@@ -4,7 +4,7 @@ export const BRAND_DATA = {
     subName: "Nagpur Tiffin Hub",
     tagline: "Ghar Jaisa Khana, Roz Roz",
     phone: "+91 8275116821",
-    email: "piyushkahilkar@gmail.com",
+    email: "contact@gharkaswaad.com",
     address: "Nandanvan, KDK Collage road, Nagpur",
     whatsapp: "+918275116821"
   },
@@ -71,15 +71,18 @@ export const BRAND_DATA = {
   testimonials: [
     {
       name: "Rahul Sharma",
-      review: "Best tiffin service in Nagpur. Food tastes like home!"
+      review: "Best tiffin service in Nagpur. Food tastes like home!",
+      image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&q=80"
     },
     {
       name: "Priya Verma",
-      review: "Affordable and hygienic. Perfect for working professionals."
+      review: "Affordable and hygienic. Perfect for working professionals.",
+      image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80"
     },
     {
       name: "Aniket Deshmukh",
-      review: "The Paneer on Thursdays is amazing! Delivery is always on time."
+      review: "The Paneer on Thursdays is amazing! Delivery is always on time.",
+      image: "https://images.unsplash.com/photo-1534308143481-c55f00be8bd7?auto=format&fit=crop&w=150&q=80"
     }
   ],
 

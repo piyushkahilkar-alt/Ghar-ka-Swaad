@@ -17,6 +17,8 @@ import LoginPage from './components/pages/LoginPage';
 import RegisterPage from './components/pages/RegisterPage';
 import DashboardPage from './components/pages/DashboardPage';
 
+import { Analytics } from '@vercel/analytics/react';
+
 export type PageType = 'home' | 'plans' | 'menu' | 'contact' | 'track' | 'login' | 'register' | 'dashboard';
 
 export default function App() {
@@ -32,7 +34,7 @@ export default function App() {
       case 'home':
         return <HomePage onNavigate={setCurrentPage} />;
       case 'plans':
-        return <PlansPage />;
+        return <PlansPage onNavigate={setCurrentPage} />;
       case 'menu':
         return <MenuPage />;
       case 'contact':
@@ -102,6 +104,7 @@ export default function App() {
           </svg>
         </a>
       </div>
+      <Analytics />
     </div>
   );
 }

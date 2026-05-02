@@ -1,10 +1,30 @@
+import { useState } from 'react';
 import { BRAND_DATA } from '../../constants';
-import { motion } from 'motion/react';
-import { Check, Zap, Rocket, Star, Utensils, Leaf } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Check, Zap, Rocket, Star, Utensils, Leaf, X } from 'lucide-react';
 
-export default function PlansPage() {
+export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => void }) {
+  const [selectedPlan, setSelectedPlan] = useState<any>(null);
+  const [checkoutStep, setCheckoutStep] = useState(2); // Start directly at payment step
+
+  const handlePaymentComplete = () => {
+    setCheckoutStep(3); // Processing step
+    setTimeout(() => {
+      setCheckoutStep(4); // Success step
+      
+      // Redirect to WhatsApp with message
+      const message = `Hi, I'd like to subscribe to the *${selectedPlan.name}*.\n\nI have completed the payment of ₹${selectedPlan.monthly_price} via UPI. (Please find screenshot attached if needed.)`;
+      window.open(`https://wa.me/${BRAND_DATA.brand.whatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
+      
+      setTimeout(() => {
+        setSelectedPlan(null);
+        setCheckoutStep(2);
+      }, 1000);
+    }, 2000);
+  };
+
   return (
-    <div className="py-20 bg-brand-secondary min-h-screen">
+    <div className="py-20 bg-brand-secondary min-h-screen relative">
       <div className="container mx-auto px-4">
         <div className="text-center max-w-2xl mx-auto mb-16">
           <h1 className="text-5xl md:text-7xl font-serif font-bold mb-6">Subscription Plans</h1>
@@ -68,18 +88,16 @@ export default function PlansPage() {
                 </ul>
               </div>
 
-              <a
-                href={`https://wa.me/${BRAND_DATA.brand.whatsapp.replace(/[^0-9]/g, '')}?text=Hi,%20I'd%20like%20to%20subscribe%20to%20the%20${encodeURIComponent(plan.name)}`}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={() => { setSelectedPlan(plan); setCheckoutStep(2); }}
                 className={`w-full py-4 rounded-2xl font-bold transition-all text-center text-base ${
                   plan.id === 2 
                     ? 'bg-brand-accent text-white shadow-lg shadow-brand-accent/30 hover:scale-105 active:scale-95' 
-                    : plan.id === 0 ? 'bg-green-500 text-white hover:bg-green-600 shadow-lg shadow-green-500/20' : 'bg-gray-100 text-gray-900 border border-gray-200 hover:bg-gray-200'
+                    : plan.id === 0 ? 'bg-green-500 text-white hover:bg-green-600 shadow-lg shadow-green-500/20 hover:scale-105 active:scale-95' : 'bg-brand-primary text-white hover:bg-brand-dark hover:scale-105 active:scale-95'
                 }`}
               >
                 {plan.id === 0 ? 'TRY NOW' : 'SELECT PLAN'}
-              </a>
+              </button>
             </motion.div>
           ))}
         </div>
@@ -94,6 +112,96 @@ export default function PlansPage() {
            </button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {selectedPlan && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-white rounded-[2.5rem] p-8 max-w-lg w-full shadow-2xl relative max-h-[90vh] overflow-y-auto"
+            >
+              <button 
+                onClick={() => setSelectedPlan(null)}
+                className="absolute top-6 right-6 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors text-gray-500"
+              >
+                <X size={18} />
+              </button>
+
+              {checkoutStep === 2 ? (
+                <div className="py-8 flex flex-col items-center justify-center text-center">
+                  <h3 className="text-2xl font-serif font-bold mb-2">Complete Payment</h3>
+                  <p className="text-gray-500 mb-6">Scan the QR code below using PhonePe, GPay, Paytm, or any UPI app to pay <strong className="text-brand-accent">₹{selectedPlan.monthly_price}</strong></p>
+                  
+                  <div className="bg-white p-4 rounded-3xl border-2 border-brand-primary/20 shadow-xl mb-6 relative overflow-hidden">
+                    <img src={`https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=upi://pay?pa=8275116821@ybl%26pn=Ghar+Ka+Swaad%26cur=INR%26am=${selectedPlan.monthly_price}`} alt="Payment QR Code" className="w-64 h-64 object-contain rounded-xl relative z-10" />
+                  </div>
+                  
+                  <div className="bg-brand-secondary/50 px-6 py-3 rounded-xl mb-6 border border-brand-primary/20 flex flex-col w-full">
+                    <span className="text-xs font-bold text-gray-500 uppercase">UPI ID</span>
+                    <span className="text-lg font-bold text-brand-primary tracking-wide">8275116821@ybl</span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 w-full mb-6 max-w-sm md:hidden">
+                     <a href={`upi://pay?pa=8275116821@ybl&pn=Ghar+Ka+Swaad&cur=INR&am=${selectedPlan.monthly_price}`} className="flex flex-col items-center justify-center gap-1 p-3 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm">
+                        <div className="w-8 h-8 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center font-bold text-xs">Pe</div>
+                        <span className="text-[10px] font-bold text-gray-600">PhonePe</span>
+                     </a>
+                     <a href={`upi://pay?pa=8275116821@ybl&pn=Ghar+Ka+Swaad&cur=INR&am=${selectedPlan.monthly_price}`} className="flex flex-col items-center justify-center gap-1 p-3 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm">
+                        <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xs">G</div>
+                        <span className="text-[10px] font-bold text-gray-600">GPay</span>
+                     </a>
+                     <a href={`upi://pay?pa=8275116821@ybl&pn=Ghar+Ka+Swaad&cur=INR&am=${selectedPlan.monthly_price}`} className="flex flex-col items-center justify-center gap-1 p-3 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm">
+                        <div className="w-8 h-8 bg-sky-100 text-sky-600 rounded-full flex items-center justify-center font-bold text-xs">Pay</div>
+                        <span className="text-[10px] font-bold text-gray-600">Paytm</span>
+                     </a>
+                  </div>
+
+                  <button 
+                    onClick={handlePaymentComplete}
+                    className="w-full bg-brand-primary text-white font-bold text-lg py-4 rounded-xl hover:bg-brand-dark transition-all flex justify-center items-center shadow-lg shadow-brand-primary/20"
+                  >
+                    I Have Completed Payment
+                  </button>
+                  <p className="text-xs text-gray-400 mt-4 max-w-sm">After payment, our team will verify the transaction and activate your plan automatically.</p>
+                </div>
+              ) : checkoutStep === 3 ? (
+                <div className="py-12 flex flex-col items-center justify-center text-center">
+                  <div className="w-20 h-20 bg-brand-primary/10 text-brand-primary rounded-full flex items-center justify-center mb-6">
+                     <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-8 h-8 border-4 border-brand-primary border-t-transparent rounded-full" />
+                  </div>
+                  <h3 className="text-2xl font-serif font-bold mb-2">Verifying Payment...</h3>
+                  <p className="text-gray-500">Please wait while we confirm your payment details.</p>
+                </div>
+              ) : (
+                <div className="py-12 flex flex-col items-center justify-center text-center">
+                  <div className="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center mb-6">
+                    <Check size={40} />
+                  </div>
+                  <h3 className="text-2xl font-serif font-bold mb-2">Subscription Confirmed!</h3>
+                  <p className="text-gray-500 mb-8">Your {selectedPlan.name} is now active. You can track your meals in the dashboard.</p>
+                  <button 
+                    onClick={() => {
+                       setSelectedPlan(null);
+                       setCheckoutStep(1);
+                       if (onNavigate) onNavigate('dashboard');
+                    }}
+                    className="bg-brand-primary text-white px-8 py-3 rounded-xl font-bold hover:bg-brand-dark transition-colors"
+                  >
+                    Go to Dashboard
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
