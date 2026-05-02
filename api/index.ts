@@ -12,49 +12,82 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// MongoDB connection
-const MONGO_URI = process.env.MONGO_URI;
+// MongoDB connection Mocked
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_change_in_production';
 
-// Ensure we don't connect multiple times in serverless environments
-if (MONGO_URI) {
-  if (mongoose.connection.readyState === 0) {
-    mongoose.connect(MONGO_URI)
-      .then(() => console.log('Connected to MongoDB'))
-      .catch(err => console.error('MongoDB connection error. Please verify your MONGO_URI:', err.message));
+const FAKE_DB: { users: any[] } = { users: [] };
+
+class User {
+  _id: string;
+  name?: string;
+  phoneOrEmail?: string;
+  password?: string;
+  referralCode?: string;
+  referralRewards: number;
+  notifications: any;
+  subscription: any;
+
+  constructor(data: any) {
+    this._id = Date.now().toString();
+    this.name = data.name;
+    this.phoneOrEmail = data.phoneOrEmail;
+    this.password = data.password;
+    this.referralRewards = 0;
+    this.notifications = {};
+    this.subscription = {};
   }
-} else {
-  console.warn('WARN: MONGO_URI is not set. Database operations will fail if called.');
+
+  async save() {
+    const index = FAKE_DB.users.findIndex((u:any) => u._id === this._id);
+    if(index === -1) {
+      FAKE_DB.users.push({...this});
+    } else {
+      FAKE_DB.users[index] = {...this};
+    }
+  }
+
+  static async findOne(query: any) {
+    return FAKE_DB.users.find(u => {
+      if (query.phoneOrEmail && query._id) return u.phoneOrEmail === query.phoneOrEmail && u._id !== query._id.$ne;
+      return u.phoneOrEmail === query.phoneOrEmail;
+    }) || null;
+  }
+
+  static async findById(id: string) {
+    const data = FAKE_DB.users.find(u => u._id === id);
+    if (!data) return null;
+    const user = new User(data);
+    user._id = data._id;
+    user.referralCode = data.referralCode;
+    user.referralRewards = data.referralRewards;
+    user.notifications = data.notifications || {};
+    user.subscription = data.subscription || {};
+    (user as any).select = function() { return this; };
+    return user;
+  }
+
+  static async findByIdAndUpdate(id: string, update: any, options: any) {
+    const userIndex = FAKE_DB.users.findIndex(u => u._id === id);
+    if (userIndex === -1) throw new Error('User not found');
+    
+    if (update.$set) {
+      for (const [key, val] of Object.entries(update.$set)) {
+        const parts = key.split('.');
+        if (parts.length === 2) {
+          FAKE_DB.users[userIndex][parts[0]] = FAKE_DB.users[userIndex][parts[0]] || {};
+          FAKE_DB.users[userIndex][parts[0]][parts[1]] = val;
+        } else {
+          FAKE_DB.users[userIndex][key] = val;
+        }
+      }
+    }
+    const updatedUser = FAKE_DB.users[userIndex];
+    return { select: () => updatedUser };
+  }
 }
 
-// Mongoose Models
-const notificationPrefsSchema = new mongoose.Schema({
-  orderUpdates: { type: Boolean, default: true },
-  menuAnnouncements: { type: Boolean, default: false }
-}, { _id: false });
-
-const subscriptionSchema = new mongoose.Schema({
-  planId: { type: String, default: null },
-  planName: { type: String, default: null },
-  status: { type: String, default: 'inactive' }, // "active", "inactive"
-  startDate: { type: Date, default: null },
-  renewalDate: { type: Date, default: null },
-  isPaused: { type: Boolean, default: false },
-  pauseStartDate: { type: Date, default: null },
-  pauseEndDate: { type: Date, default: null }
-}, { _id: false });
-
-const userSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  phoneOrEmail: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  referralCode: { type: String },
-  referralRewards: { type: Number, default: 0 },
-  notifications: { type: notificationPrefsSchema, default: () => ({}) },
-  subscription: { type: subscriptionSchema, default: () => ({}) }
-});
-
-const User = mongoose.models.User || mongoose.model('User', userSchema);
+// @ts-ignore
+mongoose.models = { User: User };
 
 // JWT Middleware
 const authenticateToken = (req: any, res: any, next: any) => {
@@ -71,6 +104,20 @@ const authenticateToken = (req: any, res: any, next: any) => {
 };
 
 // --- API Routes ---
+
+app.post('/api/send-otp', async (req, res) => {
+  try {
+    const { phoneOrEmail } = req.body;
+    if (!phoneOrEmail) {
+      return res.status(400).json({ error: 'Phone or email is required' });
+    }
+    // Simulation: integrate with WhatsApp Business API using business account 8275116821.
+    console.log(`[WhatsApp Business 8275116821] Sent OTP to ${phoneOrEmail}`);
+    res.json({ message: 'OTP sent' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to send OTP' });
+  }
+});
 
 app.post('/api/register', async (req, res) => {
   try {

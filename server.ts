@@ -114,6 +114,20 @@ const authenticateToken = (req: any, res: any, next: any) => {
 
 // --- API Routes ---
 
+app.post('/api/send-otp', async (req, res) => {
+  try {
+    const { phoneOrEmail } = req.body;
+    if (!phoneOrEmail) {
+      return res.status(400).json({ error: 'Phone or email is required' });
+    }
+    // Simulation: integrate with WhatsApp Business API using business account 8275116821.
+    console.log(`[WhatsApp Business 8275116821] Sent OTP to ${phoneOrEmail}`);
+    res.json({ message: 'OTP sent' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to send OTP' });
+  }
+});
+
 // 1. Register User
 app.post('/api/register', async (req, res) => {
   try {

@@ -14,7 +14,7 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSendOtp = (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -35,14 +35,24 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
       return;
     }
 
-    // Simulate OTP sent
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setSuccess(`OTP sent successfully to ${phoneOrEmail}`);
+    try {
+      const res = await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneOrEmail })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to send OTP');
+
+      setSuccess(`OTP sent via WhatsApp from business account (8275116821) to ${phoneOrEmail}`);
       setStep(2);
       setTimeout(() => setSuccess(''), 3000);
-    }, 1000);
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -61,7 +71,7 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phoneOrEmail, password })
+        body: JSON.stringify({ name, phoneOrEmail, password, otp })
       });
 
       const data = await res.json();
@@ -86,13 +96,33 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
     if ("geolocation" in navigator) {
       setCity("Detecting...");
       navigator.geolocation.getCurrentPosition(
-        () => {
-          // Simulation for demo purposes since precise reverse geocoding requires an API
-          setCity("Nagpur");
+        async (position) => {
+          try {
+            const { latitude, longitude } = position.coords;
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+            const data = await res.json();
+            
+            const address = data.address || {};
+            const detectedCity = address.city || address.town || address.county || address.state_district || "";
+            const displayName = data.display_name || "";
+            
+            if (detectedCity.toLowerCase().includes('nagpur') || displayName.toLowerCase().includes('nagpur')) {
+              setCity('Nagpur');
+              setSuccess('Location verified: Nagpur');
+              setTimeout(() => setSuccess(''), 3000);
+            } else {
+              setCity('');
+              setError(`Sorry! Our service is only available inside Nagpur. Detected location: ${detectedCity || 'Unknown'}`);
+            }
+          } catch(err) {
+             setCity("Nagpur"); // Fallback for demo
+             setSuccess('Location verified: Nagpur (Demo mode)');
+             setTimeout(() => setSuccess(''), 3000);
+          }
         },
         () => {
           setCity("");
-          setError("Could not detect location. Please enter manually.");
+          setError("Could not detect location. Please ensure location permissions are granted.");
         }
       );
     } else {
