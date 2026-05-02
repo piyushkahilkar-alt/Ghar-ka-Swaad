@@ -1,55 +1,76 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { BRAND_DATA } from '../../constants';
 import { MapPin } from 'lucide-react';
+import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
+import { auth } from '../../firebase';
+
+declare global {
+  interface Window {
+    recaptchaVerifier: any;
+  }
+}
 
 export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) => void }) {
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
-  const [phoneOrEmail, setPhoneOrEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [city, setCity] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [address, setAddress] = useState('');
+  const [landmark, setLandmark] = useState('');
+  const [city, setCity] = useState('Nagpur');
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+
+  useEffect(() => {
+    // Initialize recaptcha when component mounts
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        'size': 'invisible',
+      });
+    }
+  }, []);
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     // Basic validation
-    const isNumber = /^\d+$/.test(phoneOrEmail);
-    if (isNumber && phoneOrEmail.length !== 10) {
-      setError('Phone number must be 10 digits');
-      return;
-    }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (cleanPhone.length !== 10) {
+      setError('Phone number must be exactly 10 digits');
       return;
     }
     
-    // Location check
-    if (!city.toLowerCase().includes('nagpur')) {
+    if (city !== 'Nagpur') {
       setError('Sorry, our service is currently available only in Nagpur.');
       return;
     }
 
     setLoading(true);
     try {
-      const res = await fetch('/api/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneOrEmail })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to send OTP');
-
-      setSuccess(`OTP sent via WhatsApp from business account (8275116821) to ${phoneOrEmail}`);
+      // Format number to E.164 format for India
+      const phoneNumber = `+91${cleanPhone}`;
+      const appVerifier = window.recaptchaVerifier;
+      
+      const confirmation = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+      setConfirmationResult(confirmation);
+      
+      setSuccess(`OTP sent to ${phoneNumber}`);
       setStep(2);
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
-      setError(err.message || 'Something went wrong');
+      console.error(err);
+      setError(err.message || 'Failed to send OTP. Please try again.');
+      // Reset recaptcha if error
+      if (window.recaptchaVerifier) {
+         window.recaptchaVerifier.render().then((widgetId: any) => {
+           window.grecaptcha.reset(widgetId);
+         });
+      }
     } finally {
       setLoading(false);
     }
@@ -60,23 +81,39 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
     setError('');
     setSuccess('');
     
-    if (otp.length < 4) {
-      setError('Please enter a valid OTP (any 4 digits for demo)');
+    if (otp.length !== 6) {
+      setError('Please enter a valid 6-digit OTP');
       return;
     }
 
     setLoading(true);
 
     try {
+      if (!confirmationResult) {
+        throw new Error("No OTP confirmation result found. Try sending OTP again.");
+      }
+
+      // Verify OTP via Firebase
+      const result = await confirmationResult.confirm(otp);
+      const user = result.user;
+
+      // Register safely on the backend with verified user
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phoneOrEmail, password, otp })
+        body: JSON.stringify({ 
+          name, 
+          phoneOrEmail: user.phoneNumber || phone, 
+          password: user.uid, // Using UID as temporary password for mock backend integration
+          address,
+          landmark,
+          city 
+        })
       });
 
       const data = await res.json();
       
-      if (!res.ok) {
+      if (!res.ok && data.error !== 'User already exists with this phone/email') {
         throw new Error(data.error || 'Registration failed');
       }
 
@@ -86,7 +123,8 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
       }, 2000);
       
     } catch (err: any) {
-      setError(err.message);
+      console.error(err);
+      setError(err.message || 'Invalid OTP or registration failed');
     } finally {
       setLoading(false);
     }
@@ -94,7 +132,7 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
 
   const handleDetectLocation = () => {
     if ("geolocation" in navigator) {
-      setCity("Detecting...");
+      setAddress("Detecting address...");
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           try {
@@ -102,26 +140,28 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
             const data = await res.json();
             
-            const address = data.address || {};
-            const detectedCity = address.city || address.town || address.county || address.state_district || "";
+            const addr = data.address || {};
+            const detectedCity = addr.city || addr.town || addr.county || addr.state_district || "";
             const displayName = data.display_name || "";
             
             if (detectedCity.toLowerCase().includes('nagpur') || displayName.toLowerCase().includes('nagpur')) {
               setCity('Nagpur');
+              setAddress(displayName);
               setSuccess('Location verified: Nagpur');
               setTimeout(() => setSuccess(''), 3000);
             } else {
-              setCity('');
+              setAddress('');
               setError(`Sorry! Our service is only available inside Nagpur. Detected location: ${detectedCity || 'Unknown'}`);
             }
           } catch(err) {
-             setCity("Nagpur"); // Fallback for demo
+             setAddress("Dharampeth, Nagpur (Demo Fallback)"); 
+             setCity("Nagpur");
              setSuccess('Location verified: Nagpur (Demo mode)');
              setTimeout(() => setSuccess(''), 3000);
           }
         },
         () => {
-          setCity("");
+          setAddress("");
           setError("Could not detect location. Please ensure location permissions are granted.");
         }
       );
@@ -137,6 +177,7 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
         animate={{ opacity: 1, y: 0 }}
         className="max-w-md w-full bg-white p-8 rounded-3xl shadow-xl border border-brand-primary/10"
       >
+        <div id="recaptcha-container"></div>
         <div className="text-center mb-8">
           <h2 className="text-3xl font-serif font-bold text-gray-900 mb-2">Create Account</h2>
           <p className="text-gray-600">Join Ghar Ka Swaad for easy everyday meals</p>
@@ -149,19 +190,19 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
         )}
 
         {success && (
-          <div className="bg-green-50 text-green-600 p-4 rounded-xl text-sm mb-6 border border-green-100 font-medium">
+          <div className="bg-green-50 text-green-600 p-4 rounded-xl text-sm mb-6 border border-green-100 font-medium whitespace-pre-wrap">
             {success}
           </div>
         )}
 
         {step === 1 ? (
-          <form onSubmit={handleSendOtp} className="space-y-5">
+          <form onSubmit={handleSendOtp} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
               <input
                 type="text"
                 required
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 transition-all shadow-sm"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 transition-all shadow-sm"
                 placeholder="Enter your name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -169,54 +210,84 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number or Email</label>
-              <input
-                type="text"
-                required
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 transition-all shadow-sm"
-                placeholder="e.g. 9876543210 or email@example.com"
-                value={phoneOrEmail}
-                onChange={(e) => setPhoneOrEmail(e.target.value)}
-              />
-            </div>
-
-            <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Current City</label>
-              <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+              <div className="flex">
+                <span className="inline-flex items-center px-4 py-2.5 rounded-l-xl border border-r-0 border-gray-200 bg-gray-50 text-gray-500 shadow-sm">
+                  +91
+                </span>
                 <input
-                  type="text"
+                  type="tel"
                   required
-                  className="w-full pl-4 pr-32 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 transition-all shadow-sm"
-                  placeholder="e.g. Nagpur"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
+                  maxLength={10}
+                  className="flex-1 w-full px-4 py-2.5 rounded-r-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 transition-all shadow-sm"
+                  placeholder="9876543210"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
                 />
-                <button 
-                  type="button"
-                  onClick={handleDetectLocation}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-brand-primary bg-brand-primary/10 px-3 py-1.5 rounded-lg hover:bg-brand-primary/20 flex items-center gap-1 transition-colors"
-                >
-                  <MapPin size={14} /> Detect
-                </button>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email <span className="text-gray-400 font-normal">(Optional)</span></label>
               <input
-                type="password"
-                required
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 transition-all shadow-sm"
-                placeholder="Min 6 characters"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                type="email"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 transition-all shadow-sm"
+                placeholder="email@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
+            </div>
+
+            <div className="relative">
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-gray-700">Detailed Address</label>
+                <button 
+                    type="button"
+                    onClick={handleDetectLocation}
+                    className="text-xs font-bold text-brand-primary hover:text-brand-dark flex items-center gap-1 transition-colors"
+                  >
+                  <MapPin size={12} /> Auto Detect
+                </button>
+              </div>
+              <textarea
+                required
+                rows={2}
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 transition-all shadow-sm resize-none"
+                placeholder="House No, Building, Street"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Landmark</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 transition-all shadow-sm"
+                  placeholder="Nearby place"
+                  value={landmark}
+                  onChange={(e) => setLandmark(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                <select
+                  required
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 transition-all shadow-sm bg-white"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                >
+                  <option value="Nagpur">Nagpur</option>
+                </select>
+              </div>
             </div>
 
             <button
               type="submit"
               disabled={loading || !!success}
-              className="w-full bg-brand-primary text-white font-bold py-4 rounded-xl hover:bg-brand-dark shadow-lg hover:shadow-xl transition-all disabled:opacity-70 mt-4 active:scale-[0.98]"
+              className="w-full bg-brand-primary text-white font-bold py-3.5 rounded-xl hover:bg-brand-dark shadow-lg hover:shadow-xl transition-all disabled:opacity-70 mt-6 active:scale-[0.98]"
             >
               {loading ? 'Sending OTP...' : 'Send OTP'}
             </button>
@@ -224,18 +295,25 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
         ) : (
           <form onSubmit={handleRegister} className="space-y-6">
             <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100 text-center">
-              <p className="text-gray-600 mb-4 text-sm">Please enter the One-Time Password sent to <strong className="text-gray-900 block mt-1">{phoneOrEmail}</strong></p>
+              <p className="text-gray-600 mb-4 text-sm">Please enter the 6-digit OTP sent to <strong className="text-gray-900 block mt-1">+91 {phone}</strong></p>
               <input
                 type="text"
                 required
                 maxLength={6}
                 className="w-full px-4 py-4 text-center tracking-[0.5em] font-mono text-2xl rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 shadow-inner"
-                placeholder="0000"
+                placeholder="000000"
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
               />
-              <p className="text-xs text-brand-primary mt-4 cursor-pointer hover:underline" onClick={() => setStep(1)}>
-                Change contact details
+              <p className="text-sm font-medium text-gray-600 mt-4">
+                Test mode: You might not receive actual SMS if testing limits are reached. 
+              </p>
+              <p className="text-xs text-brand-primary mt-4 cursor-pointer hover:underline" onClick={() => {
+                setStep(1); 
+                setConfirmationResult(null);
+                setOtp('');
+              }}>
+                Change phone number
               </p>
             </div>
             

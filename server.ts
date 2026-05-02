@@ -25,6 +25,9 @@ class User {
   name?: string;
   phoneOrEmail?: string;
   password?: string;
+  address?: string;
+  landmark?: string;
+  city?: string;
   referralCode?: string;
   referralRewards: number;
   notifications: any;
@@ -35,6 +38,9 @@ class User {
     this.name = data.name;
     this.phoneOrEmail = data.phoneOrEmail;
     this.password = data.password;
+    this.address = data.address;
+    this.landmark = data.landmark;
+    this.city = data.city;
     this.referralRewards = 0;
     this.notifications = {};
     this.subscription = {};
@@ -131,7 +137,7 @@ app.post('/api/send-otp', async (req, res) => {
 // 1. Register User
 app.post('/api/register', async (req, res) => {
   try {
-    const { name, phoneOrEmail, password } = req.body;
+    const { name, phoneOrEmail, password, address, landmark, city } = req.body;
 
     // Basic Validation
     if (!name || !phoneOrEmail || !password) {
@@ -154,7 +160,10 @@ app.post('/api/register', async (req, res) => {
     const newUser = new User({
       name,
       phoneOrEmail,
-      password: hashedPassword
+      password: hashedPassword,
+      address,
+      landmark,
+      city
     });
 
     await newUser.save();

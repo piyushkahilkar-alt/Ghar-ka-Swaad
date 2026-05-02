@@ -22,6 +22,9 @@ class User {
   name?: string;
   phoneOrEmail?: string;
   password?: string;
+  address?: string;
+  landmark?: string;
+  city?: string;
   referralCode?: string;
   referralRewards: number;
   notifications: any;
@@ -32,6 +35,9 @@ class User {
     this.name = data.name;
     this.phoneOrEmail = data.phoneOrEmail;
     this.password = data.password;
+    this.address = data.address;
+    this.landmark = data.landmark;
+    this.city = data.city;
     this.referralRewards = 0;
     this.notifications = {};
     this.subscription = {};
@@ -121,7 +127,7 @@ app.post('/api/send-otp', async (req, res) => {
 
 app.post('/api/register', async (req, res) => {
   try {
-    const { name, phoneOrEmail, password } = req.body;
+    const { name, phoneOrEmail, password, address, landmark, city } = req.body;
 
     if (!name || !phoneOrEmail || !password) {
       return res.status(400).json({ error: 'All fields are required' });
@@ -138,7 +144,14 @@ app.post('/api/register', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const newUser = new User({ name, phoneOrEmail, password: hashedPassword });
+    const newUser = new User({ 
+        name, 
+        phoneOrEmail, 
+        password: hashedPassword,
+        address,
+        landmark,
+        city
+    });
     await newUser.save();
     
     res.status(201).json({ message: 'User registered successfully!' });
