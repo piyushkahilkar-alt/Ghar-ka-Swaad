@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { BRAND_DATA } from '../../constants';
 import { MapPin } from 'lucide-react';
 import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
-import { auth } from '../../firebase';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../../firebase';
+import { handleFirestoreError, OperationType } from '../../utils/firestoreError';
 
 declare global {
   interface Window {
@@ -19,7 +21,11 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
   const [address, setAddress] = useState('');
   const [landmark, setLandmark] = useState('');
   const [city, setCity] = useState('Nagpur');
+  const [mapLink, setMapLink] = useState('');
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
   const [otp, setOtp] = useState('');
+
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,11 +33,15 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
 
   useEffect(() => {
     // Initialize recaptcha when component mounts
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        'size': 'invisible',
-      });
-    }
+    const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      'size': 'invisible',
+    });
+    window.recaptchaVerifier = verifier;
+
+    return () => {
+      verifier.clear();
+      window.recaptchaVerifier = null;
+    };
   }, []);
 
   const handleSendOtp = async (e: React.FormEvent) => {
@@ -68,7 +78,7 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
       // Reset recaptcha if error
       if (window.recaptchaVerifier) {
          window.recaptchaVerifier.render().then((widgetId: any) => {
-           window.grecaptcha.reset(widgetId);
+           (window as any).grecaptcha.reset(widgetId);
          });
       }
     } finally {
@@ -97,29 +107,55 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
       const result = await confirmationResult.confirm(otp);
       const user = result.user;
 
-      // Register safely on the backend with verified user
-      const res = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          name, 
-          phoneOrEmail: user.phoneNumber || phone, 
-          password: user.uid, // Using UID as temporary password for mock backend integration
-          address,
-          landmark,
-          city 
-        })
-      });
+      // Register safely on Firestore
+      try {
+        const userRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userRef);
+        
+        if (userDoc.exists()) {
+           throw new Error('User already exists with this phone number. Please login instead.');
+        }
 
-      const data = await res.json();
-      
-      if (!res.ok && data.error !== 'User already exists with this phone/email') {
-        throw new Error(data.error || 'Registration failed');
+        await setDoc(userRef, {
+            name,
+            phone: user.phoneNumber || phone,
+            email,
+            address,
+            landmark,
+            city,
+            mapLink,
+            latitude,
+            longitude,
+            createdAt: serverTimestamp()
+        });
+
+        // Also register on the mock backend to keep Dashboard API working
+        await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            name, 
+            phoneOrEmail: user.phoneNumber || phone, 
+            password: user.uid,
+            address,
+            landmark,
+            city,
+            mapLink,
+            latitude,
+            longitude
+          })
+        });
+
+      } catch (err: any) {
+         if (err.message === 'User already exists with this phone number. Please login instead.') {
+            throw err;
+         }
+         handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}`);
       }
 
-      setSuccess('Registration successful! Redirecting to login...');
+      setSuccess('Registration successful! Redirecting to dashboard...');
       setTimeout(() => {
-        onNavigate('login');
+        onNavigate('dashboard');
       }, 2000);
       
     } catch (err: any) {
@@ -132,11 +168,17 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
 
   const handleDetectLocation = () => {
     if ("geolocation" in navigator) {
-      setAddress("Detecting address...");
+      setAddress("Detecting exact location...");
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           try {
             const { latitude, longitude } = position.coords;
+            setLatitude(latitude);
+            setLongitude(longitude);
+            const googleMapLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
+            setMapLink(googleMapLink);
+
+            // Fetch address from Nominatim (Free open source Geocoder)
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
             const data = await res.json();
             
@@ -154,16 +196,17 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
               setError(`Sorry! Our service is only available inside Nagpur. Detected location: ${detectedCity || 'Unknown'}`);
             }
           } catch(err) {
-             setAddress("Dharampeth, Nagpur (Demo Fallback)"); 
+             setAddress("Location Detected, fetching address failed..."); 
              setCity("Nagpur");
-             setSuccess('Location verified: Nagpur (Demo mode)');
+             setSuccess('Location coordinates secured (Demo mode fallback)');
              setTimeout(() => setSuccess(''), 3000);
           }
         },
         () => {
           setAddress("");
-          setError("Could not detect location. Please ensure location permissions are granted.");
-        }
+          setError("Could not detect location. Please ensure location permissions are granted in your browser settings.");
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
       setError("Geolocation not supported by your browser");

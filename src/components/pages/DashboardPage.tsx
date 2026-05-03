@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { LogOut, History, Package, User, Bell, MapPin, PauseCircle, PlayCircle, X, Gift, Copy, CheckCircle2 } from 'lucide-react';
 import { BRAND_DATA } from '../../constants';
@@ -15,6 +15,7 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [pauseData, setPauseData] = useState({ startDate: '', endDate: '' });
   const [isPausingStatus, setIsPausingStatus] = useState(false);
+  const [showTrackingMap, setShowTrackingMap] = useState(false);
 
   const [notifications, setNotifications] = useState({
     orderUpdates: true,
@@ -420,15 +421,56 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
           <div className="bg-white p-6 md:p-8 rounded-3xl shadow-lg border border-gray-100">
             {orders?.history?.[0]?.status === 'Preparing' || orders?.history?.[0]?.status === 'Out for Delivery' ? (
               <div className="mb-8">
-                <div className="bg-brand-primary p-6 rounded-2xl text-white shadow-xl flex items-center justify-between">
+                <div className="bg-brand-primary p-6 rounded-2xl text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
                    <div>
                      <h3 className="text-xl font-bold mb-1">Live Tracking</h3>
                      <p className="opacity-90">{orders.history[0].meal}</p>
                    </div>
-                   <div className="text-right">
-                     <span className="block text-2xl font-bold bg-white text-brand-primary px-4 py-1.5 rounded-full shadow-inner">{orders.history[0].status}</span>
+                   <div className="flex flex-col md:items-end gap-3">
+                     <span className="block text-2xl font-bold bg-white text-brand-primary px-4 py-1.5 rounded-full shadow-inner inline-block w-fit text-center md:text-right">{orders.history[0].status}</span>
+                     {orders?.userLocation?.latitude && orders.history[0].status === 'Out for Delivery' && (
+                       <button 
+                         onClick={() => setShowTrackingMap(!showTrackingMap)}
+                         className="flex items-center gap-2 bg-brand-secondary text-brand-primary px-4 py-2 rounded-full font-bold hover:bg-white hover:text-brand-primary transition-colors text-sm"
+                       >
+                         <MapPin size={16} />
+                         {showTrackingMap ? 'Hide Map' : 'Track via Google Maps'}
+                       </button>
+                     )}
                    </div>
                 </div>
+                {showTrackingMap && orders?.userLocation?.latitude && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="mt-4 rounded-2xl overflow-hidden border-2 border-brand-primary/20 bg-gray-50 p-2"
+                  >
+                     <div className="w-full h-80 rounded-xl overflow-hidden relative">
+                       <iframe 
+                         width="100%" 
+                         height="100%" 
+                         style={{ border: 0 }} 
+                         loading="lazy" 
+                         allowFullScreen 
+                         src={`https://maps.google.com/maps?q=${orders.userLocation.latitude},${orders.userLocation.longitude}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                       ></iframe>
+                       <div className="absolute top-4 left-4 right-4 bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-lg border border-brand-primary/10">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-brand-primary/10 p-2 rounded-full text-brand-primary shrink-0">
+                               <MapPin size={20} className="animate-bounce" />
+                            </div>
+                            <div>
+                               <p className="text-sm font-bold text-gray-900">Delivery Address</p>
+                               <p className="text-xs text-gray-600 line-clamp-2">{orders.userLocation.address}</p>
+                            </div>
+                          </div>
+                          <div className="mt-3 flex justify-between items-center text-xs text-gray-500 border-t pt-3">
+                            <span>Delivery Partner knows exact location in Google Maps.</span>
+                          </div>
+                       </div>
+                     </div>
+                  </motion.div>
+                )}
               </div>
             ) : null}
 

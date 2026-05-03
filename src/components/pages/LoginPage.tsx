@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { BRAND_DATA } from '../../constants';
 import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
-import { auth } from '../../firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../../firebase';
+import { handleFirestoreError, OperationType } from '../../utils/firestoreError';
 
 export default function LoginPage({ onNavigate }: { onNavigate: (page: any) => void }) {
   const [step, setStep] = useState(1);
@@ -13,11 +15,16 @@ export default function LoginPage({ onNavigate }: { onNavigate: (page: any) => v
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
 
   useEffect(() => {
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'login-recaptcha-container', {
-        'size': 'invisible',
-      });
-    }
+    // Initialize recaptcha when component mounts
+    const verifier = new RecaptchaVerifier(auth, 'login-recaptcha-container', {
+      'size': 'invisible',
+    });
+    window.recaptchaVerifier = verifier;
+
+    return () => {
+      verifier.clear();
+      window.recaptchaVerifier = null;
+    };
   }, []);
 
   const handleSendOtp = async (e: React.FormEvent) => {
@@ -44,7 +51,7 @@ export default function LoginPage({ onNavigate }: { onNavigate: (page: any) => v
       setError(err.message || 'Failed to send OTP. Please try again.');
       if (window.recaptchaVerifier) {
          window.recaptchaVerifier.render().then((widgetId: any) => {
-           window.grecaptcha.reset(widgetId);
+           (window as any).grecaptcha.reset(widgetId);
          });
       }
     } finally {
@@ -71,23 +78,39 @@ export default function LoginPage({ onNavigate }: { onNavigate: (page: any) => v
       const result = await confirmationResult.confirm(otp);
       const user = result.user;
 
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          phoneOrEmail: user.phoneNumber || phone, 
-          password: user.uid 
-        })
-      });
+      try {
+        const userRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userRef);
+        
+        if (!userDoc.exists()) {
+           throw new Error('User not registered. Please register first.');
+        }
 
-      const data = await res.json();
-      
-      if (!res.ok) {
-        throw new Error(data.error || 'Login failed! Are you sure you are registered?');
+        const userData = userDoc.data();
+        
+        // Also fetch token from mock backend to keep Dashboard API working
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            phoneOrEmail: user.phoneNumber || phone, 
+            password: user.uid 
+          })
+        });
+
+        const data = await res.json();
+        
+        if (res.ok) {
+           localStorage.setItem('token', data.token);
+        }
+
+        localStorage.setItem('user', JSON.stringify({ uid: user.uid, phone: user.phoneNumber, ...userData }));
+      } catch (err: any) {
+        if (err.message === 'User not registered. Please register first.') {
+          throw err;
+        }
+        handleFirestoreError(err, OperationType.GET, `users/${user.uid}`);
       }
-
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
       
       onNavigate('dashboard');
     } catch (err: any) {

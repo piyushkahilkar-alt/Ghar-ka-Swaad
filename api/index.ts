@@ -25,6 +25,9 @@ class User {
   address?: string;
   landmark?: string;
   city?: string;
+  mapLink?: string;
+  latitude?: number;
+  longitude?: number;
   referralCode?: string;
   referralRewards: number;
   notifications: any;
@@ -38,6 +41,9 @@ class User {
     this.address = data.address;
     this.landmark = data.landmark;
     this.city = data.city;
+    this.mapLink = data.mapLink;
+    this.latitude = data.latitude;
+    this.longitude = data.longitude;
     this.referralRewards = 0;
     this.notifications = {};
     this.subscription = {};
@@ -59,7 +65,7 @@ class User {
     }) || null;
   }
 
-  static async findById(id: string) {
+  static async findById(id: string): Promise<any> {
     const data = FAKE_DB.users.find(u => u._id === id);
     if (!data) return null;
     const user = new User(data);
@@ -72,7 +78,7 @@ class User {
     return user;
   }
 
-  static async findByIdAndUpdate(id: string, update: any, options: any) {
+  static async findByIdAndUpdate(id: string, update: any, options: any): Promise<any> {
     const userIndex = FAKE_DB.users.findIndex(u => u._id === id);
     if (userIndex === -1) throw new Error('User not found');
     
@@ -127,7 +133,7 @@ app.post('/api/send-otp', async (req, res) => {
 
 app.post('/api/register', async (req, res) => {
   try {
-    const { name, phoneOrEmail, password, address, landmark, city } = req.body;
+    const { name, phoneOrEmail, password, address, landmark, city, mapLink, latitude, longitude } = req.body;
 
     if (!name || !phoneOrEmail || !password) {
       return res.status(400).json({ error: 'All fields are required' });
@@ -150,7 +156,10 @@ app.post('/api/register', async (req, res) => {
         password: hashedPassword,
         address,
         landmark,
-        city
+        city,
+        mapLink,
+        latitude,
+        longitude
     });
     await newUser.save();
     
@@ -196,7 +205,7 @@ app.put('/api/profile', authenticateToken, async (req: any, res: any) => {
       req.user.id,
       { $set: { name, phoneOrEmail } },
       { new: true }
-    ).select('-password');
+    );
     
     res.json(user);
   } catch (error) {
@@ -207,7 +216,7 @@ app.put('/api/profile', authenticateToken, async (req: any, res: any) => {
 
 app.get('/api/profile', authenticateToken, async (req: any, res: any) => {
   try {
-    let user = await User.findById(req.user.id).select('-password');
+    let user = await User.findById(req.user.id);
     if (user && !user.referralCode) {
       user.referralCode = 'GHS-' + user._id.toString().substring(0, 6).toUpperCase();
       await user.save();
@@ -230,7 +239,7 @@ app.put('/api/profile/notifications', authenticateToken, async (req: any, res: a
         } 
       },
       { new: true }
-    ).select('-password');
+    );
     
     res.json(user);
   } catch (error) {
@@ -252,7 +261,7 @@ app.put('/api/profile/subscription/pause', authenticateToken, async (req: any, r
         } 
       },
       { new: true }
-    ).select('-password');
+    );
     res.json(user);
   } catch (error) {
     console.error('Pause subscription error:', error);
@@ -282,7 +291,7 @@ app.post('/api/plans/subscribe', authenticateToken, async (req: any, res: any) =
         } 
       },
       { new: true }
-    ).select('-password');
+    );
     res.json(user);
   } catch (error) {
     console.error('Subscribe error:', error);
@@ -302,7 +311,7 @@ app.put('/api/profile/subscription/resume', authenticateToken, async (req: any, 
         } 
       },
       { new: true }
-    ).select('-password');
+    );
     res.json(user);
   } catch (error) {
     console.error('Resume subscription error:', error);
@@ -316,12 +325,18 @@ app.get('/api/orders', authenticateToken, async (req: any, res: any) => {
     
     // Generate some history based on whether they have an active plan or not
     const history = user?.subscription?.planName ? [
-      { id: 1, date: new Date().toISOString().split('T')[0], meal: user.subscription.planName, status: 'Preparing' },
+      { id: 1, date: new Date().toISOString().split('T')[0], meal: user.subscription.planName, status: 'Out for Delivery' },
     ] : [];
 
     res.json({
       activePlan: user?.subscription?.planName || null,
-      history: history
+      history: history,
+      userLocation: {
+        address: user?.address,
+        mapLink: user?.mapLink,
+        latitude: user?.latitude,
+        longitude: user?.longitude
+      }
     });
   } catch(e) {
     res.status(500).json({ error: 'Server error' });
