@@ -1,5 +1,6 @@
 import { db } from './firebase';
 import { collection, addDoc, doc, updateDoc, setDoc } from 'firebase/firestore';
+import toast from 'react-hot-toast';
 
 export const verifyPayment = async (response: any, token: string, userStr: string, plan: any) => {
     const { uid } = JSON.parse(userStr);
@@ -76,7 +77,7 @@ export const startPayment = async (
         // 2. Open Razorpay Checkout Modal
         // Use explicitly provided test key if environment variable is missing or different
         const envKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
-        const keyId = "rzp_test_SlJrq5daKnq9o0"; // explicitly set as requested by user
+        const keyId = "rzp_live_SlNHXXiBlvShoX"; // explicitly set as requested by user
         if (!keyId) {
             throw new Error('Razorpay Key ID not found');
         }
@@ -93,9 +94,11 @@ export const startPayment = async (
                     onProcessing('Activating Subscription...');
                     await verifyPayment(response, token, userStr, plan);
                     
+                    toast.success('Payment Successful! Activating plan...', { duration: 4000 });
                     // Call success callback
                     onSuccess(response.razorpay_payment_id);
                 } catch (error: any) {
+                    toast.error(`Verification Failed: ${error.message}`);
                     onError(error);
                 }
             },
@@ -110,12 +113,20 @@ export const startPayment = async (
 
         const rzp = new (window as any).Razorpay(options);
         rzp.on('payment.failed', function (response: any) {
-            onError(new Error(`Payment Failed: ${response.error.description}`));
+            const errDesc = response?.error?.description || "Payment Failed";
+            if (errDesc.includes('website does not match')) {
+                toast.error('Razorpay Error: You are testing a Live Key on an unregistered domain. Please whitelist this app URL in the Razorpay Dashboard under Settings > Webhooks/Domains, or use a Test Key.', { duration: 8000 });
+                onError(new Error(`Domain mismatch. Whitelist this URL in Razorpay.`));
+            } else {
+                toast.error(`Payment Failed: ${errDesc}`);
+                onError(new Error(`Payment Failed: ${errDesc}`));
+            }
         });
         
         rzp.open();
 
     } catch (error: any) {
+        toast.error(error.message || "An error occurred");
         onError(error);
     }
 };

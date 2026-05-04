@@ -11,8 +11,19 @@ interface NavbarProps {
 
 export default function Navbar({ currentPage, onNavigate }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isOrdering, setIsOrdering] = useState(false);
 
   const isLoggedIn = !!localStorage.getItem('user');
+
+  const handleOrderNow = () => {
+    setIsOrdering(true);
+    // Simulate short network delay to feel like we are "initiating order"
+    setTimeout(() => {
+      onNavigate('plans');
+      setIsOrdering(false);
+      setIsMobileMenuOpen(false);
+    }, 800);
+  };
 
   const navItems: { label: string; value: PageType }[] = [
     { label: 'Home', value: 'home' },
@@ -53,10 +64,15 @@ export default function Navbar({ currentPage, onNavigate }: NavbarProps) {
               </button>
             ))}
             <button
-              onClick={() => onNavigate('plans')}
-              className="bg-brand-primary text-white px-5 py-2 rounded-full text-sm font-semibold hover:bg-brand-primary/90 transition-all active:scale-95"
+              onClick={handleOrderNow}
+              disabled={isOrdering}
+              className="bg-brand-primary text-white px-5 py-2 rounded-full text-sm font-semibold hover:bg-brand-primary/90 transition-all active:scale-95 flex items-center justify-center min-w-[110px]"
             >
-              Order Now
+              {isOrdering ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+              ) : (
+                "Order Now"
+              )}
             </button>
           </div>
 
@@ -88,13 +104,15 @@ export default function Navbar({ currentPage, onNavigate }: NavbarProps) {
             </button>
           ))}
           <button
-            onClick={() => {
-              onNavigate('plans');
-              setIsMobileMenuOpen(false);
-            }}
-            className="block w-full bg-brand-primary text-white px-4 py-3 rounded-xl text-center font-bold"
+            onClick={handleOrderNow}
+            disabled={isOrdering}
+            className="w-full bg-brand-primary text-white px-4 py-3 rounded-xl text-center font-bold flex items-center justify-center min-h-[48px]"
           >
-            Order Now
+            {isOrdering ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/30 border-t-white"></div>
+            ) : (
+              "Order Now"
+            )}
           </button>
         </div>
       )}

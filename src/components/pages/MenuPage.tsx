@@ -41,7 +41,7 @@ export default function MenuPage() {
                            return (
                              <span 
                                key={i} 
-                               className={`text-sm md:text-[15px] px-3 py-1 rounded-full lowercase italic font-serif ${tagClass}`}
+                               className={`text-sm md:text-[15px] px-3 py-1 rounded-md font-medium font-sans capitalize ${tagClass}`}
                              >
                                {item}
                              </span>

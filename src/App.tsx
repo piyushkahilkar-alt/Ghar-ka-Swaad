@@ -5,10 +5,12 @@
 
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Toaster } from 'react-hot-toast';
 import { BRAND_DATA } from './constants';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import HomePage from './components/pages/HomePage';
+import FoodLoader from './components/ui/FoodLoader';
 import { Analytics } from '@vercel/analytics/react';
 
 // Lazy loading pages for better performance
@@ -94,7 +96,7 @@ export default function App() {
     if (isAuthChecking && currentPage === 'dashboard') {
       return (
         <div className="flex h-screen items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div>
+          <FoodLoader />
         </div>
       );
     }
@@ -131,11 +133,7 @@ export default function App() {
     }
 
     return (
-      <Suspense fallback={
-        <div className="flex h-[60vh] items-center justify-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-primary"></div>
-        </div>
-      }>
+      <Suspense fallback={<FoodLoader />}>
         {PageComponent}
       </Suspense>
     );
@@ -194,6 +192,7 @@ export default function App() {
         </a>
       </div>
       <Analytics />
+      <Toaster position="top-right" />
     </div>
   );
 }

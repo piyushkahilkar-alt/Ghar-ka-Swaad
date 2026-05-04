@@ -13,28 +13,29 @@ export default function HomePage({ onNavigate }: HomePageProps) {
     <div className="flex flex-col">
       {/* Hero Section */}
       <section className="relative min-h-[90vh] flex items-center pt-20 overflow-hidden">
-        <div className="absolute inset-0 z-0 flex items-center justify-end md:justify-center overflow-hidden">
-          <img 
-            src="https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&q=80&w=2000" 
-            alt="Traditional Indian Food"
-            className="absolute w-full h-full object-cover opacity-10"
+        <div className="absolute inset-0 z-0 overflow-hidden">
+          <motion.img 
+            initial={{ scale: 1, x: 0, y: 0 }}
+            animate={{ scale: 1.15, x: "-1%", y: "1%" }}
+            transition={{ duration: 25, repeat: Infinity, repeatType: "reverse", ease: "linear" }}
+            src="https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&q=100&w=2676" 
+            alt="Delicious Indian Tiffin Meals"
+            className="w-full h-full object-cover"
           />
-          <img 
-            src={logoBase64} 
-            alt="Background Logo" 
-            className="absolute w-[120%] md:w-[80%] max-w-[800px] object-contain opacity-10 rotate-[-5deg]"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-brand-secondary via-brand-secondary/90 to-brand-secondary/40"></div>
+          {/* Dark gradient overlay for modern look and text readability */}
+          <div className="absolute inset-0 bg-gradient-to-b from-gray-950/80 via-gray-900/60 to-gray-950/90"></div>
+          {/* Subtle warm tint to match food branding */}
+          <div className="absolute inset-0 bg-amber-900 mix-blend-multiply opacity-20"></div>
         </div>
 
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="max-w-2xl">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 flex flex-col items-center justify-center text-center mt-8">
+          <div className="max-w-4xl mx-auto flex flex-col items-center">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5 }}
             >
-               <span className="inline-block py-1 px-3 bg-brand-accent/10 text-brand-accent rounded-full text-sm font-bold tracking-widest uppercase mb-4">
+               <span className="inline-block py-2 px-6 bg-brand-accent/90 text-white rounded-full text-sm sm:text-base font-bold tracking-widest uppercase mb-6 shadow-lg backdrop-blur-md">
                  ₹50 OFF First Week
                </span>
             </motion.div>
@@ -42,37 +43,42 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.6 }}
-              className="text-6xl md:text-8xl font-serif font-bold text-gray-900 leading-[0.95] mb-6"
+              className="text-5xl sm:text-6xl md:text-8xl font-serif font-bold text-white leading-[1.1] md:leading-[1.0] mb-6 drop-shadow-2xl"
             >
-               Best <span className="text-brand-accent">Tiffin Service</span> in Nagpur
+               Best <span className="text-brand-accent">Tiffin Service</span><br/> in Nagpur
             </motion.h1>
             <motion.p 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4, duration: 0.6 }}
-              className="text-xl md:text-2xl text-gray-700 font-serif italic mb-8 max-w-xl"
+              className="text-xl md:text-3xl text-gray-200 font-serif italic mb-10 max-w-3xl drop-shadow-lg"
             >
-              "घर जैसा खाना, रोज आपके दरवाजे तक" — Nagpur's most trusted home-cooked meal subscription.
+              "घर जैसा खाना, रोज आपके दरवाजे तक" <br/>
+              <span className="text-base md:text-xl font-sans not-italic text-gray-300 mt-5 block uppercase tracking-wider font-semibold">Nagpur's most trusted home-cooked meal subscription</span>
             </motion.p>
             
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, duration: 0.6 }}
-              className="flex flex-wrap gap-4"
+              className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-6 w-full px-4 sm:px-0"
             >
-              <button 
-                onClick={() => onNavigate('plans')}
-                className="px-8 py-4 bg-brand-accent text-white rounded-xl font-bold text-lg hover:bg-brand-accent/90 transition-all flex items-center gap-2 group shadow-xl shadow-brand-accent/20"
+              <a 
+                href="/plans"
+                onClick={(e) => { e.preventDefault(); onNavigate('plans'); }}
+                className="w-full sm:w-auto px-8 py-4 sm:px-10 sm:py-5 bg-brand-accent text-white rounded-xl font-bold text-lg sm:text-xl hover:bg-brand-accent/90 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 group shadow-2xl shadow-brand-accent/30"
+                title="View Tiffin Plans in Nagpur"
               >
-                View Plans <ArrowRight className="group-hover:translate-x-1 transition-transform" />
-              </button>
-              <button 
-                onClick={() => onNavigate('menu')}
-                className="px-8 py-4 bg-white text-gray-900 rounded-xl font-bold text-lg hover:bg-gray-50 border border-gray-200 transition-all shadow-lg"
+                View Plans <ArrowRight className="group-hover:translate-x-2 transition-transform" />
+              </a>
+              <a 
+                href="/menu"
+                onClick={(e) => { e.preventDefault(); onNavigate('menu'); }}
+                className="w-full sm:w-auto px-8 py-4 sm:px-10 sm:py-5 bg-white/10 backdrop-blur-md text-white rounded-xl font-bold text-lg sm:text-xl hover:bg-white/20 border border-white/20 hover:border-white/40 hover:scale-105 active:scale-95 transition-all shadow-xl"
+                title="View Today's Tiffin Menu in Nagpur"
               >
                 Today's Menu
-              </button>
+              </a>
             </motion.div>
           </div>
         </div>
@@ -81,11 +87,17 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       {/* Features Section */}
       <section className="py-24 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.6 }}
+            className="text-center max-w-3xl mx-auto mb-16"
+          >
             <h2 className="text-4xl md:text-5xl font-serif font-bold mb-4 uppercase tracking-tight">Why Choose Our Tiffin Service?</h2>
             <div className="w-24 h-1 bg-brand-primary mx-auto mb-6"></div>
             <p className="text-gray-600 text-lg">We bring the warmth and taste of home kitchens to your table, with every meal prepared with love and care.</p>
-          </div>
+          </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {BRAND_DATA.features.map((feature, idx) => (
@@ -114,11 +126,17 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       {/* Service Areas */}
       <section className="py-20 bg-brand-secondary border-y border-brand-primary/10">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-12">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.6 }}
+            className="text-center max-w-3xl mx-auto mb-12"
+          >
             <h2 className="text-3xl md:text-4xl font-serif font-bold mb-4 uppercase tracking-tight text-gray-900">Tiffin Delivery Areas in Nagpur</h2>
             <div className="w-16 h-1 bg-brand-accent mx-auto mb-6"></div>
             <p className="text-gray-600 text-lg">We currently deliver our fresh tiffins to these major locations in Nagpur and nearby areas.</p>
-          </div>
+          </motion.div>
           
           <div className="flex flex-wrap justify-center gap-4 max-w-4xl mx-auto">
             {BRAND_DATA.locations.slice(0, 10).map((loc, idx) => (
@@ -142,31 +160,44 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32"></div>
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-white/5 rounded-full -ml-48 -mb-48"></div>
         
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95, y: 40 }}
+          whileInView={{ opacity: 1, scale: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.7 }}
+          className="container mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10"
+        >
           <h2 className="text-4xl md:text-6xl font-serif font-bold text-white mb-8">
             Start your Tiffin subscription today &<br className="hidden md:block" /> never worry about food again
           </h2>
           <div className="flex flex-col sm:flex-row justify-center items-center gap-6">
-             <button 
-               onClick={() => onNavigate('plans')}
+             <a 
+               href="/plans"
+               onClick={(e) => { e.preventDefault(); onNavigate('plans'); }}
                className="bg-white text-brand-accent px-10 py-5 rounded-full font-black text-xl hover:scale-105 active:scale-95 transition-all shadow-2xl"
              >
                SUBSCRIBE NOW
-             </button>
+             </a>
              <div className="text-white/80 font-serif italic text-lg leading-tight text-center sm:text-left">
                “Refer & Earn ₹100 for every friend who joins!”
              </div>
           </div>
-        </div>
+        </motion.div>
       </section>
 
       {/* Testimonials */}
       <section className="py-24 bg-brand-secondary">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-16"
+          >
             <h2 className="text-4xl font-serif font-bold mb-2">Loved by Nagpurians</h2>
             <p className="text-gray-500">Real taste, real reviews from our happy subscribers.</p>
-          </div>
+          </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {BRAND_DATA.testimonials.map((t, idx) => (

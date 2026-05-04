@@ -32,7 +32,11 @@ const app = express();
 
 const PORT = 3000;
 
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    (req as any).rawBody = buf;
+  }
+}));
 app.use(cors());
 
 import fs from 'fs';
@@ -432,22 +436,22 @@ app.post('/api/create-order', authenticateToken, async (req: any, res: any) => {
   try {
     const { amount, currency, receipt } = req.body;
     
-    if (!amount || amount < 100) {
-      return res.status(400).json({ error: 'Invalid amount (minimum 100 paise required)' });
-    }
+    // As per user request, charge 1 rupee (100 paise) for testing instead of full amount
+    const testingAmount = 100; // 1 INR
 
-    if (!razorpay) {
-      return res.status(500).json({ error: 'Razorpay is not configured on the server' });
-    }
+    const razorpayLive = new Razorpay({
+      key_id: "rzp_live_SlNHXXiBlvShoX",
+      key_secret: "y1PuBcho0RssIPRogKuHD0vS",
+    });
 
     const options = {
-      amount,
+      amount: testingAmount,
       currency: currency || 'INR',
       receipt: receipt || `receipt_${Date.now()}`,
       notes: req.body.notes || {}
     };
 
-    const order = await razorpay.orders.create(options);
+    const order = await razorpayLive.orders.create(options);
     res.json(order);
   } catch (error) {
     console.error('Razorpay create order error:', error);
@@ -463,7 +467,7 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
       return res.status(400).json({ error: 'Missing payment verification fields' });
     }
 
-    const secret = "lFnUSnzslAVphyKOYjXHdZZF";
+    const secret = "y1PuBcho0RssIPRogKuHD0vS";
     if (!secret) throw new Error('Razorpay secret not configured');
 
     const generatedSignature = crypto
@@ -546,15 +550,23 @@ app.get('/api/orders', authenticateToken, async (req: any, res: any) => {
 // API 404 handler (prevents Vite from serving HTML for unknown API routes)
 
 // Razorpay Webhook Endpoint
-app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, res) => {
+app.post('/api/webhook', async (req, res) => {
   try {
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    const webhookSecret = "y1PuBcho0RssIPRogKuHD0vS";
+    const signature = req.headers['x-razorpay-signature'];
     
-    // In production, you should verify the signature. 
-    // Since req.body is already parsed to JSON because of app.use(express.json()) at the top, 
-    // verification might need raw body parsing adjustments if strict signature validation is required.
-    // For now we'll process the JSON directly as the user requested.
-    
+    // Verify Webhook Signature if secret and signature are present
+    if (webhookSecret && signature && (req as any).rawBody) {
+      const expectedSignature = crypto
+        .createHmac('sha256', webhookSecret)
+        .update((req as any).rawBody)
+        .digest('hex');
+
+      if (expectedSignature !== signature) {
+        return res.status(400).send("Invalid Signature");
+      }
+    }
+
     const event = req.body;
     
     if (event.event === "payment.captured") {
@@ -563,7 +575,12 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
 
       const userId = payment.notes?.userId || 'unknown_user';
       const planName = payment.notes?.planName || 'Unknown Plan';
+      const userPhone = payment.contact || 'Customer'; // Razorpay includes contact
       const amount = payment.amount / 100; // convert paise to INR
+
+      // WhatsApp Notification Simulation
+      console.log(`[WhatsApp] 💬 Sent Success Msg to Customer (${userPhone}): "Your payment of ₹${amount} for ${planName} was successful. Welcome to Ghar Ka Swaad!"`);
+      console.log(`[WhatsApp] 💬 Sent Alert to Owner (8275116821): "New Payment Received: ₹${amount} for ${planName} from ${userPhone}."`);
 
       // 👉 Save to Firebase Payments
       if (adminDb) {
@@ -582,7 +599,7 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
         }
       }
 
-      // 👉 Update Mongoose/Mock User plan (if applicable in this template)
+      // 👉 Update Mongoose/Mock User plan
       if (userId !== 'unknown_user') {
         const user = await User.findById(userId);
         if (user) {
@@ -594,8 +611,14 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
           await user.save();
         }
       }
-
-      // 👉 Send notification logic here...
+    } else if (event.event === "payment.failed") {
+      const payment = event.payload.payment.entity;
+      const amount = payment.amount / 100; 
+      const planName = payment.notes?.planName || 'Plan';
+      const userPhone = payment.contact || 'Customer';
+      
+      console.log(`[WhatsApp] 💬 Sent Failure Msg to Customer (${userPhone}): "Your payment of ₹${amount} for ${planName} failed. Please try again."`);
+      console.log(`[WhatsApp] 💬 Sent Alert to Owner (8275116821): "Payment Failed: ₹${amount} for ${planName} from ${userPhone}."`);
     }
 
     res.status(200).send("OK");
