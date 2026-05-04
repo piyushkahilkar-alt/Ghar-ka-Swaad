@@ -6,17 +6,50 @@ import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
+import Razorpay from 'razorpay';
+import { initializeApp, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 
 dotenv.config();
 
+let adminDb: any = null;
+try {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    const adminApp = initializeApp({
+      credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT))
+    });
+    adminDb = getFirestore(adminApp);
+  } else {
+    const adminApp = initializeApp();
+    adminDb = getFirestore(adminApp);
+  }
+} catch (e) {
+  console.log('Firebase admin not fully initialized (waiting for credentials).');
+}
+
 const app = express();
+
 const PORT = 3000;
 
 app.use(express.json());
 app.use(cors());
 
+import fs from 'fs';
+app.use((req, res, next) => {
+  fs.appendFileSync('server-debug.log', `[DEBUG] Incoming Request: ${req.method} ${req.url}\n`);
+  next();
+});
+
 // MongoDB connection Mocked
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_change_in_production';
+
+let razorpay: any;
+// Override with user's explicitly provided test keys to fix "Authentication failed" error
+razorpay = new Razorpay({
+  key_id: "rzp_test_SlJrq5daKnq9o0",
+  key_secret: "lFnUSnzslAVphyKOYjXHdZZF",
+});
 
 const FAKE_DB: { users: any[] } = { users: [] };
 
@@ -53,17 +86,40 @@ class User {
   }
 
   async save() {
-    // Check if it's already there to handle mongoose updates. Actually for new user:
-    const index = FAKE_DB.users.findIndex((u:any) => u._id === this._id);
-    if(index === -1) {
-      // Create copy
-      FAKE_DB.users.push({...this});
+    if (adminDb && this._id) {
+       // Convert instance to plain object
+       const data = JSON.parse(JSON.stringify(this));
+       await adminDb.collection('users').doc(this._id).set(data, { merge: true });
     } else {
-      FAKE_DB.users[index] = {...this};
+       const index = FAKE_DB.users.findIndex((u:any) => u._id === this._id);
+       if(index === -1) {
+         FAKE_DB.users.push({...this});
+       } else {
+         FAKE_DB.users[index] = {...this};
+       }
     }
   }
 
   static async findOne(query: any) {
+    if (adminDb) {
+       if (query.phoneOrEmail) {
+         const snap = await adminDb.collection('users').where('phoneOrEmail', '==', query.phoneOrEmail).get();
+         if (!snap.empty) {
+            let docs = snap.docs;
+            if (query._id && query._id.$ne) {
+               docs = docs.filter((d: any) => d.id !== query._id.$ne);
+            }
+            if (docs.length > 0) {
+               const data = docs[0].data();
+               const user = new User(data);
+               user._id = docs[0].id;
+               return user;
+            }
+         }
+       }
+       // Fallback for logic if multiple queries
+       return null;
+    }
     return FAKE_DB.users.find(u => {
       if (query.phoneOrEmail && query._id) return u.phoneOrEmail === query.phoneOrEmail && u._id !== query._id.$ne;
       return u.phoneOrEmail === query.phoneOrEmail;
@@ -71,7 +127,21 @@ class User {
   }
 
   static async findById(id: string): Promise<any> {
-    // Return an instance so save() works on it (like referralCode update)
+    if (adminDb) {
+       const doc = await adminDb.collection('users').doc(id).get();
+       if (doc.exists) {
+          const data = doc.data();
+          const user = new User(data);
+          user._id = doc.id;
+          user.referralCode = data.referralCode;
+          user.referralRewards = data.referralRewards;
+          user.notifications = data.notifications || {};
+          user.subscription = data.subscription || {};
+          (user as any).select = function() { return this; };
+          return user;
+       }
+       return null;
+    }
     const data = FAKE_DB.users.find(u => u._id === id);
     if (!data) return null;
     const user = new User(data);
@@ -80,12 +150,21 @@ class User {
     user.referralRewards = data.referralRewards;
     user.notifications = data.notifications || {};
     user.subscription = data.subscription || {};
-    // Add select to chain
     (user as any).select = function() { return this; };
     return user;
   }
 
-  static async findByIdAndUpdate(id: string, update: any, options: any): Promise<any> {
+  static async findByIdAndUpdate(id: string, update: any, options?: any): Promise<any> {
+    if (adminDb) {
+       let updateObj: any = {};
+       if (update.$set) {
+          for (const [key, val] of Object.entries(update.$set)) {
+             updateObj[key] = val; // Firestore supports dot notation in update()
+          }
+          await adminDb.collection('users').doc(id).update(updateObj);
+       }
+       return await User.findById(id);
+    }
     const userIndex = FAKE_DB.users.findIndex(u => u._id === id);
     if (userIndex === -1) throw new Error('User not found');
     
@@ -117,11 +196,21 @@ const authenticateToken = (req: any, res: any, next: any) => {
   
   if (!token) return res.status(401).json({ error: 'Access denied' });
 
-  jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
-    if (err) return res.status(403).json({ error: 'Invalid token' });
-    req.user = user;
-    next();
-  });
+  if (token.startsWith('dummy-token-')) {
+    // Handling dummy token from Firebase Auth placeholder
+    req.user = { id: token.replace('dummy-token-', '') };
+    return next();
+  }
+
+  try {
+    jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
+      if (err) return res.status(403).json({ error: 'Invalid token' });
+      req.user = user;
+      next();
+    });
+  } catch (error) {
+    return res.status(403).json({ error: 'Invalid token' });
+  }
 };
 
 // --- API Routes ---
@@ -338,6 +427,97 @@ app.put('/api/profile/subscription/resume', authenticateToken, async (req: any, 
   }
 });
 
+// Payment Routes - Razorpay
+app.post('/api/create-order', authenticateToken, async (req: any, res: any) => {
+  try {
+    const { amount, currency, receipt } = req.body;
+    
+    if (!amount || amount < 100) {
+      return res.status(400).json({ error: 'Invalid amount (minimum 100 paise required)' });
+    }
+
+    if (!razorpay) {
+      return res.status(500).json({ error: 'Razorpay is not configured on the server' });
+    }
+
+    const options = {
+      amount,
+      currency: currency || 'INR',
+      receipt: receipt || `receipt_${Date.now()}`,
+      notes: req.body.notes || {}
+    };
+
+    const order = await razorpay.orders.create(options);
+    res.json(order);
+  } catch (error) {
+    console.error('Razorpay create order error:', error);
+    res.status(500).json({ error: 'Failed to create order' });
+  }
+});
+
+app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) => {
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, userId, planName, amount, planId } = req.body;
+
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ error: 'Missing payment verification fields' });
+    }
+
+    const secret = "lFnUSnzslAVphyKOYjXHdZZF";
+    if (!secret) throw new Error('Razorpay secret not configured');
+
+    const generatedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest('hex');
+
+    if (generatedSignature !== razorpay_signature) {
+      return res.status(400).json({ error: 'Signature mismatch. Payment verification failed.' });
+    }
+
+    // Payment is verified, save directly in backend for speed.
+    const numericAmount = parseFloat((amount || "0").toString().replace(/[^0-9.]/g, ''));
+    if (adminDb && userId) {
+      try {
+        await adminDb.collection("payments").doc(razorpay_payment_id).set({
+          paymentId: razorpay_payment_id,
+          userId: userId,
+          amount: numericAmount,
+          status: "success",
+          plan: planName || "Unknown Plan",
+          createdAt: new Date().toISOString()
+        });
+      } catch (e) {
+        console.error("Firebase payment creation during fast verify failed:", e);
+      }
+    }
+
+    try {
+       const user = await User.findById(req.user.id || userId);
+       if (user) {
+          user.subscription = user.subscription || {};
+          user.subscription.status = 'active';
+          user.subscription.planName = planName;
+          user.subscription.planId = planId ? planId.toString() : "";
+          user.subscription.isPaused = false;
+          user.subscription.startDate = new Date().toISOString();
+          const renewal = new Date();
+          renewal.setDate(renewal.getDate() + 30);
+          user.subscription.renewalDate = renewal.toISOString();
+          user.subscription.expiryDate = renewal.toISOString();
+          await user.save();
+       }
+    } catch (e) {
+       console.error("Fast verify user update failed:", e);
+    }
+
+    res.json({ success: true, message: 'Payment verified successfully and subscription activated.' });
+  } catch (error) {
+    console.error('Razorpay verify payment error:', error);
+    res.status(500).json({ error: 'Failed to verify payment' });
+  }
+});
+
 // 4. User Orders (Dummy Data)
 app.get('/api/orders', authenticateToken, async (req: any, res: any) => {
   try {
@@ -361,6 +541,72 @@ app.get('/api/orders', authenticateToken, async (req: any, res: any) => {
   } catch(e) {
     res.status(500).json({ error: 'Server error' });
   }
+});
+
+// API 404 handler (prevents Vite from serving HTML for unknown API routes)
+
+// Razorpay Webhook Endpoint
+app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, res) => {
+  try {
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    
+    // In production, you should verify the signature. 
+    // Since req.body is already parsed to JSON because of app.use(express.json()) at the top, 
+    // verification might need raw body parsing adjustments if strict signature validation is required.
+    // For now we'll process the JSON directly as the user requested.
+    
+    const event = req.body;
+    
+    if (event.event === "payment.captured") {
+      const payment = event.payload.payment.entity;
+      console.log("Payment Success:", payment.id);
+
+      const userId = payment.notes?.userId || 'unknown_user';
+      const planName = payment.notes?.planName || 'Unknown Plan';
+      const amount = payment.amount / 100; // convert paise to INR
+
+      // 👉 Save to Firebase Payments
+      if (adminDb) {
+        try {
+          await adminDb.collection("payments").doc(payment.id).set({
+            paymentId: payment.id,
+            userId: userId,
+            amount: amount,
+            status: "success",
+            plan: planName,
+            createdAt: new Date().toISOString()
+          });
+          console.log("Successfully saved payment to Firebase.");
+        } catch (dbErr) {
+          console.error("Firebase write failed (check permissions/ADC):", dbErr);
+        }
+      }
+
+      // 👉 Update Mongoose/Mock User plan (if applicable in this template)
+      if (userId !== 'unknown_user') {
+        const user = await User.findById(userId);
+        if (user) {
+          user.subscription = user.subscription || {};
+          user.subscription.status = 'active';
+          user.subscription.isPaused = false;
+          user.subscription.planName = planName;
+          user.subscription.expiryDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+          await user.save();
+        }
+      }
+
+      // 👉 Send notification logic here...
+    }
+
+    res.status(200).send("OK");
+  } catch (error) {
+    console.error('Webhook processing error:', error);
+    res.status(500).send("Webhook processing failed");
+  }
+});
+
+app.all('/api/*', (req, res) => {
+  res.status(404).json({ error: 'API route not found' });
 });
 
 // Setup Vite Middleware for frontend React app

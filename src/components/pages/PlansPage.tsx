@@ -3,38 +3,67 @@ import { BRAND_DATA } from '../../constants';
 import { motion, AnimatePresence } from 'motion/react';
 import { Check, Zap, Rocket, Star, Utensils, Leaf, X } from 'lucide-react';
 import QRCode from 'react-qr-code';
+import { startPayment } from '../../payment';
 
 export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => void }) {
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [checkoutStep, setCheckoutStep] = useState(2); // Start directly at payment step
+  const [isProcessingInfo, setIsProcessingInfo] = useState('');
 
-  const handlePaymentComplete = async () => {
-    setCheckoutStep(3); // Processing step
-    
-    const token = localStorage.getItem('token');
-    if (token) {
-       try {
-           await fetch('/api/plans/subscribe', {
-               method: 'POST',
-               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-               body: JSON.stringify({ planId: selectedPlan.id.toString(), planName: selectedPlan.name })
-           });
-       } catch (err) {
-           console.error('Failed to subscribe via API');
-       }
+  const initiatePayment = async (plan: any) => {
+    setSelectedPlan(plan);
+    setCheckoutStep(2); // Initial payment step (now starts Razorpay process)
+
+    const userStr = localStorage.getItem('user');
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+
+    if (!userStr || !token) {
+        alert("Please login first to subscribe.");
+        if (onNavigate) onNavigate('login');
+        return;
     }
 
-    setTimeout(() => {
-      setCheckoutStep(4); // Success step
-      
-      // If not logged in, we can still redirect to whatsapp, else we just stay on success step
-      // Wait, let's keep WhatsApp for fallback or just remove it if user asked for dashboard feature
-      if (!token) {
-        const message = `Hi, I'd like to subscribe to the *${selectedPlan.name}*.\n\nI have completed the payment of ₹${selectedPlan.monthly_price} via UPI. (Please find screenshot attached if needed.)`;
-        window.open(`https://wa.me/${BRAND_DATA.brand.whatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
-      }
-      
-    }, 2000);
+    startPayment(
+        plan, 
+        userStr, 
+        token, 
+        (status) => {
+            setIsProcessingInfo(status);
+            if (status.includes('Verifying') || status.includes('Saving') || status.includes('Activating')) {
+                setCheckoutStep(3); // Show Verifying state
+            }
+        },
+        (paymentId) => {
+            setCheckoutStep(4); // Success step
+            // Update local storage so dashboard has newest subscription immediately
+            const updatedUser = JSON.parse(userStr);
+            const expiryDate = new Date();
+            expiryDate.setDate(expiryDate.getDate() + 30);
+            
+            updatedUser.subscription = {
+                planId: plan.id.toString(),
+                planName: plan.name,
+                isPaused: false,
+                expiryDate: expiryDate.toISOString()
+            };
+            
+            if (sessionStorage.getItem('user')) {
+                sessionStorage.setItem('user', JSON.stringify(updatedUser));
+            } else {
+                localStorage.setItem('user', JSON.stringify(updatedUser));
+            }
+
+            setTimeout(() => {
+                 if (onNavigate) onNavigate('dashboard');
+            }, 3000);
+        },
+        (error) => {
+            console.error('Payment Error:', error);
+            alert(error.message);
+            setCheckoutStep(2); // Go back to default/failed state
+            setSelectedPlan(null);
+        }
+    );
   };
 
   return (
@@ -103,7 +132,7 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
               </div>
 
               <button
-                onClick={() => { setSelectedPlan(plan); setCheckoutStep(2); }}
+                onClick={() => initiatePayment(plan)}
                 className={`w-full py-4 rounded-2xl font-bold transition-all text-center text-base ${
                   plan.id === 2 
                     ? 'bg-brand-accent text-white shadow-lg shadow-brand-accent/30 hover:scale-105 active:scale-95' 
@@ -149,49 +178,20 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
               </button>
 
               {checkoutStep === 2 ? (
-                <div className="py-8 flex flex-col items-center justify-center text-center">
-                  <h3 className="text-2xl font-serif font-bold mb-2">Complete Payment</h3>
-                  <p className="text-gray-500 mb-6">Scan the QR code below using PhonePe, GPay, Paytm, or any UPI app to pay <strong className="text-brand-accent">₹{selectedPlan.monthly_price}</strong></p>
-                  
-                  <div className="bg-white p-4 rounded-3xl border-2 border-brand-primary/20 shadow-xl mb-6 relative overflow-hidden flex justify-center items-center w-64 h-64 mx-auto">
-                    <QRCode value={`upi://pay?pa=8275116821@ybl&pn=Ghar+Ka+Swaad&cur=INR&am=${selectedPlan.monthly_price}`} size={200} />
+                <div className="py-12 flex flex-col items-center justify-center text-center">
+                  <div className="w-20 h-20 bg-brand-primary/10 text-brand-primary rounded-full flex items-center justify-center mb-6">
+                     <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-8 h-8 border-4 border-brand-primary border-t-transparent rounded-full" />
                   </div>
-                  
-                  <div className="bg-brand-secondary/50 px-6 py-3 rounded-xl mb-6 border border-brand-primary/20 flex flex-col w-full">
-                    <span className="text-xs font-bold text-gray-500 uppercase">UPI ID</span>
-                    <span className="text-lg font-bold text-brand-primary tracking-wide">8275116821@ybl</span>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3 w-full mb-6 max-w-sm md:hidden">
-                     <a href={`upi://pay?pa=8275116821@ybl&pn=Ghar+Ka+Swaad&cur=INR&am=${selectedPlan.monthly_price}`} className="flex flex-col items-center justify-center gap-1 p-3 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm">
-                        <div className="w-8 h-8 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center font-bold text-xs">Pe</div>
-                        <span className="text-[10px] font-bold text-gray-600">PhonePe</span>
-                     </a>
-                     <a href={`upi://pay?pa=8275116821@ybl&pn=Ghar+Ka+Swaad&cur=INR&am=${selectedPlan.monthly_price}`} className="flex flex-col items-center justify-center gap-1 p-3 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm">
-                        <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xs">G</div>
-                        <span className="text-[10px] font-bold text-gray-600">GPay</span>
-                     </a>
-                     <a href={`upi://pay?pa=8275116821@ybl&pn=Ghar+Ka+Swaad&cur=INR&am=${selectedPlan.monthly_price}`} className="flex flex-col items-center justify-center gap-1 p-3 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm">
-                        <div className="w-8 h-8 bg-sky-100 text-sky-600 rounded-full flex items-center justify-center font-bold text-xs">Pay</div>
-                        <span className="text-[10px] font-bold text-gray-600">Paytm</span>
-                     </a>
-                  </div>
-
-                  <button 
-                    onClick={handlePaymentComplete}
-                    className="w-full bg-brand-primary text-white font-bold text-lg py-4 rounded-xl hover:bg-brand-dark transition-all flex justify-center items-center shadow-lg shadow-brand-primary/20"
-                  >
-                    I Have Completed Payment
-                  </button>
-                  <p className="text-xs text-gray-400 mt-4 max-w-sm">After payment, our team will verify the transaction and activate your plan automatically.</p>
+                  <h3 className="text-2xl font-serif font-bold mb-2">Preparing Checkout</h3>
+                  <p className="text-gray-500 mb-6">{isProcessingInfo}</p>
                 </div>
               ) : checkoutStep === 3 ? (
                 <div className="py-12 flex flex-col items-center justify-center text-center">
                   <div className="w-20 h-20 bg-brand-primary/10 text-brand-primary rounded-full flex items-center justify-center mb-6">
                      <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-8 h-8 border-4 border-brand-primary border-t-transparent rounded-full" />
                   </div>
-                  <h3 className="text-2xl font-serif font-bold mb-2">Verifying Payment...</h3>
-                  <p className="text-gray-500">Please wait while we confirm your payment details.</p>
+                  <h3 className="text-2xl font-serif font-bold mb-2">{isProcessingInfo}</h3>
+                  <p className="text-gray-500">Please wait while we confirm your payment details securely.</p>
                 </div>
               ) : (
                 <div className="py-12 flex flex-col items-center justify-center text-center">

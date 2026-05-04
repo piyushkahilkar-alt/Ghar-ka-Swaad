@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
+import { initializeFirestore, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCzGce1RgiLVhMnplr-xP-W2ts6FWmVobU",
@@ -12,6 +12,36 @@ const firebaseConfig = {
   measurementId: "G-3B26ZTW023"
 };
 
-const app = initializeApp(firebaseConfig);
+export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true
+});
+
+// Modular functions for Authentication and Database
+
+export const saveUserData = async (uid: string, data: any) => {
+  const userRef = doc(db, 'users', uid);
+  await setDoc(userRef, {
+    ...data,
+    createdAt: serverTimestamp()
+  });
+};
+
+export const signupUser = async (email: string, password: string, userData: any) => {
+  const result = await createUserWithEmailAndPassword(auth, email, password);
+  // Optimistically save user data in the background so it doesn't block the UI
+  saveUserData(result.user.uid, userData).catch(err => console.error("Error saving user data:", err));
+  return result.user;
+};
+
+export const loginUser = async (email: string, password: string, rememberMe: boolean = true) => {
+  await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+  const result = await signInWithEmailAndPassword(auth, email, password);
+  const userRef = doc(db, 'users', result.user.uid);
+  const userDoc = await getDoc(userRef);
+  if (!userDoc.exists()) {
+    throw new Error('User not registered properly. Please register first.');
+  }
+  return { user: result.user, userData: userDoc.data() };
+};

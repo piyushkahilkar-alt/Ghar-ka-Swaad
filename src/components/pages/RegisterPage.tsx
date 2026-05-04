@@ -1,166 +1,82 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { BRAND_DATA } from '../../constants';
 import { MapPin } from 'lucide-react';
-import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '../../firebase';
+import { signupUser } from '../../firebase';
 import { handleFirestoreError, OperationType } from '../../utils/firestoreError';
 
-declare global {
-  interface Window {
-    recaptchaVerifier: any;
-  }
-}
-
 export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) => void }) {
-  const [step, setStep] = useState(1);
   const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [landmark, setLandmark] = useState('');
   const [city, setCity] = useState('Nagpur');
   const [mapLink, setMapLink] = useState('');
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
-  const [otp, setOtp] = useState('');
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
 
-  useEffect(() => {
-    // Initialize recaptcha when component mounts
-    const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-      'size': 'invisible',
-    });
-    window.recaptchaVerifier = verifier;
-
-    return () => {
-      verifier.clear();
-      window.recaptchaVerifier = null;
-    };
-  }, []);
-
-  const handleSendOtp = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    // Basic validation
-    const cleanPhone = phone.replace(/\D/g, '');
-    if (cleanPhone.length !== 10) {
-      setError('Phone number must be exactly 10 digits');
+    
+    // Front-end validation
+    if (!name || !email || !password || !address || !landmark) {
+      setError('Please fill in all mandatory fields.');
       return;
     }
-    
+
     if (city !== 'Nagpur') {
       setError('Sorry, our service is currently available only in Nagpur.');
       return;
     }
-
-    setLoading(true);
-    try {
-      // Format number to E.164 format for India
-      const phoneNumber = `+91${cleanPhone}`;
-      const appVerifier = window.recaptchaVerifier;
-      
-      const confirmation = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
-      setConfirmationResult(confirmation);
-      
-      setSuccess(`OTP sent to ${phoneNumber}`);
-      setStep(2);
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Failed to send OTP. Please try again.');
-      // Reset recaptcha if error
-      if (window.recaptchaVerifier) {
-         window.recaptchaVerifier.render().then((widgetId: any) => {
-           (window as any).grecaptcha.reset(widgetId);
-         });
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
     
-    if (otp.length !== 6) {
-      setError('Please enter a valid 6-digit OTP');
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long.');
       return;
     }
 
     setLoading(true);
 
     try {
-      if (!confirmationResult) {
-        throw new Error("No OTP confirmation result found. Try sending OTP again.");
-      }
+      // Fast, database-once approach using modular function
+      const userDataToSave = {
+        name,
+        email,
+        phone,
+        address,
+        landmark,
+        city,
+        mapLink,
+        latitude,
+        longitude
+      };
+      
+      const user = await signupUser(email, password, userDataToSave);
 
-      // Verify OTP via Firebase
-      const result = await confirmationResult.confirm(otp);
-      const user = result.user;
-
-      // Register safely on Firestore
-      try {
-        const userRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userRef);
-        
-        if (userDoc.exists()) {
-           throw new Error('User already exists with this phone number. Please login instead.');
-        }
-
-        await setDoc(userRef, {
-            name,
-            phone: user.phoneNumber || phone,
-            email,
-            address,
-            landmark,
-            city,
-            mapLink,
-            latitude,
-            longitude,
-            createdAt: serverTimestamp()
-        });
-
-        // Also register on the mock backend to keep Dashboard API working
-        await fetch('/api/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            name, 
-            phoneOrEmail: user.phoneNumber || phone, 
-            password: user.uid,
-            address,
-            landmark,
-            city,
-            mapLink,
-            latitude,
-            longitude
-          })
-        });
-
-      } catch (err: any) {
-         if (err.message === 'User already exists with this phone number. Please login instead.') {
-            throw err;
-         }
-         handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}`);
-      }
+      // Create a dummy token to skip backend while maintaining flow
+      const dummyToken = `dummy-token-${user.uid}`;
+      localStorage.setItem('token', dummyToken);
+      localStorage.setItem('user', JSON.stringify({ uid: user.uid, email, ...userDataToSave }));
 
       setSuccess('Registration successful! Redirecting to dashboard...');
       setTimeout(() => {
         onNavigate('dashboard');
-      }, 2000);
+      }, 200);
       
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Invalid OTP or registration failed');
+      if (err.code === 'auth/email-already-in-use') {
+        setError('This email is already registered. Please login instead.');
+      } else {
+        setError(err.message || 'Registration failed');
+      }
+      try { handleFirestoreError(err, OperationType.WRITE, 'users/signup'); } catch(e) {}
     } finally {
       setLoading(false);
     }
@@ -220,7 +136,7 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
         animate={{ opacity: 1, y: 0 }}
         className="max-w-md w-full bg-white p-8 rounded-3xl shadow-xl border border-brand-primary/10"
       >
-        <div id="recaptcha-container"></div>
+        <div ></div>
         <div className="text-center mb-8">
           <h2 className="text-3xl font-serif font-bold text-gray-900 mb-2">Create Account</h2>
           <p className="text-gray-600">Join Ghar Ka Swaad for easy everyday meals</p>
@@ -238,8 +154,7 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
           </div>
         )}
 
-        {step === 1 ? (
-          <form onSubmit={handleSendOtp} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
               <input
@@ -249,6 +164,31 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
                 placeholder="Enter your name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email <span className="text-brand-primary">*</span></label>
+              <input
+                type="email"
+                required
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 transition-all shadow-sm text-gray-900"
+                placeholder="email@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password <span className="text-brand-primary">*</span></label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 transition-all shadow-sm text-gray-900"
+                placeholder="At least 6 characters"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
             </div>
 
@@ -268,17 +208,6 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
                   onChange={(e) => setPhone(e.target.value)}
                 />
               </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email <span className="text-gray-400 font-normal">(Optional)</span></label>
-              <input
-                type="email"
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 transition-all shadow-sm"
-                placeholder="email@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
             </div>
 
             <div className="relative">
@@ -332,43 +261,9 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
               disabled={loading || !!success}
               className="w-full bg-brand-primary text-white font-bold py-3.5 rounded-xl hover:bg-brand-dark shadow-lg hover:shadow-xl transition-all disabled:opacity-70 mt-6 active:scale-[0.98]"
             >
-              {loading ? 'Sending OTP...' : 'Send OTP'}
+              {loading ? 'Creating Account...' : 'Create Account'}
             </button>
           </form>
-        ) : (
-          <form onSubmit={handleRegister} className="space-y-6">
-            <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100 text-center">
-              <p className="text-gray-600 mb-4 text-sm">Please enter the 6-digit OTP sent to <strong className="text-gray-900 block mt-1">+91 {phone}</strong></p>
-              <input
-                type="text"
-                required
-                maxLength={6}
-                className="w-full px-4 py-4 text-center tracking-[0.5em] font-mono text-2xl rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 shadow-inner"
-                placeholder="000000"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-              />
-              <p className="text-sm font-medium text-gray-600 mt-4">
-                Test mode: You might not receive actual SMS if testing limits are reached. 
-              </p>
-              <p className="text-xs text-brand-primary mt-4 cursor-pointer hover:underline" onClick={() => {
-                setStep(1); 
-                setConfirmationResult(null);
-                setOtp('');
-              }}>
-                Change phone number
-              </p>
-            </div>
-            
-            <button
-              type="submit"
-              disabled={loading || !!success}
-              className="w-full bg-brand-primary text-white font-bold py-4 rounded-xl hover:bg-brand-dark shadow-lg hover:shadow-xl transition-all disabled:opacity-70 active:scale-[0.98]"
-            >
-              {loading ? 'Verifying & Creating...' : 'Verify & Create Account'}
-            </button>
-          </form>
-        )}
 
         <div className="mt-8 text-center">
           <p className="text-gray-600">

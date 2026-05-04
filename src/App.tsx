@@ -3,53 +3,142 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BRAND_DATA } from './constants';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import HomePage from './components/pages/HomePage';
-import PlansPage from './components/pages/PlansPage';
-import MenuPage from './components/pages/MenuPage';
-import ContactPage from './components/pages/ContactPage';
-import TrackOrderPage from './components/pages/TrackOrderPage';
-import LoginPage from './components/pages/LoginPage';
-import RegisterPage from './components/pages/RegisterPage';
-import DashboardPage from './components/pages/DashboardPage';
-
 import { Analytics } from '@vercel/analytics/react';
+
+// Lazy loading pages for better performance
+const PlansPage = lazy(() => import('./components/pages/PlansPage'));
+const MenuPage = lazy(() => import('./components/pages/MenuPage'));
+const ContactPage = lazy(() => import('./components/pages/ContactPage'));
+const TrackOrderPage = lazy(() => import('./components/pages/TrackOrderPage'));
+const LoginPage = lazy(() => import('./components/pages/LoginPage'));
+const RegisterPage = lazy(() => import('./components/pages/RegisterPage'));
+const DashboardPage = lazy(() => import('./components/pages/DashboardPage'));
 
 export type PageType = 'home' | 'plans' | 'menu' | 'contact' | 'track' | 'login' | 'register' | 'dashboard';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<PageType>('home');
+  const [isAuthChecking, setIsAuthChecking] = useState(() => !localStorage.getItem('user') && !sessionStorage.getItem('user'));
 
   // Scroll to top on page change
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [currentPage]);
 
+  // Auth state listener for preserving session
+  useEffect(() => {
+    let unsubscribe: any = null;
+    
+    const initAuthListener = async () => {
+      try {
+        const { auth, db } = await import('./firebase');
+        const { onAuthStateChanged } = await import('firebase/auth');
+        const { doc, getDoc } = await import('firebase/firestore');
+
+        unsubscribe = onAuthStateChanged(auth, async (user) => {
+          if (user) {
+            // Determine the storage type for this user session based on where token currently is
+            // If they just logged in without remember me, token will be in sessionStorage.
+            // If it's a new page load with session persistence, user will be logged in but we need to put token in session
+            // As a heuristic: if we have a sessionStorage token, or if we don't have a localStorage token.
+            const useSession = !!sessionStorage.getItem('token') || (!localStorage.getItem('token') && !localStorage.getItem('user'));
+            const storage = useSession ? sessionStorage : localStorage;
+
+            // Only fetch if we don't have it in storage to speed up initial load
+            if (!storage.getItem('user')) {
+              try {
+                const userDoc = await getDoc(doc(db, 'users', user.uid));
+                if (userDoc.exists()) {
+                  storage.setItem('user', JSON.stringify({ uid: user.uid, email: user.email, ...userDoc.data() }));
+                }
+              } catch (e: any) {
+                console.error("Could not fetch user data", e);
+                if (e.message && e.message.includes('offline')) {
+                   console.warn("Client is offline, running with local authentication only.");
+                }
+              }
+            }
+            storage.setItem('token', `dummy-token-${user.uid}`);
+          } else {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('user');
+            // If they are on a protected page, kick them to login
+            if (currentPage === 'dashboard') {
+              setCurrentPage('login');
+            }
+          }
+          setIsAuthChecking(false);
+        });
+      } catch (e) {
+        console.error("Error loading auth", e);
+        setIsAuthChecking(false);
+      }
+    };
+
+    initAuthListener();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [currentPage]);
+
   const renderPage = () => {
+    if (isAuthChecking && currentPage === 'dashboard') {
+      return (
+        <div className="flex h-screen items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div>
+        </div>
+      );
+    }
+
+    let PageComponent;
     switch (currentPage) {
       case 'home':
-        return <HomePage onNavigate={setCurrentPage} />;
+        PageComponent = <HomePage onNavigate={setCurrentPage} />;
+        break;
       case 'plans':
-        return <PlansPage onNavigate={setCurrentPage} />;
+        PageComponent = <PlansPage onNavigate={setCurrentPage} />;
+        break;
       case 'menu':
-        return <MenuPage />;
+        PageComponent = <MenuPage />;
+        break;
       case 'contact':
-        return <ContactPage />;
+        PageComponent = <ContactPage />;
+        break;
       case 'track':
-        return <TrackOrderPage />;
+        PageComponent = <TrackOrderPage />;
+        break;
       case 'login':
-        return <LoginPage onNavigate={setCurrentPage} />;
+        PageComponent = <LoginPage onNavigate={setCurrentPage} />;
+        break;
       case 'register':
-        return <RegisterPage onNavigate={setCurrentPage} />;
+        PageComponent = <RegisterPage onNavigate={setCurrentPage} />;
+        break;
       case 'dashboard':
-        return <DashboardPage onNavigate={setCurrentPage} />;
+        PageComponent = <DashboardPage onNavigate={setCurrentPage} />;
+        break;
       default:
-        return <HomePage onNavigate={setCurrentPage} />;
+        PageComponent = <HomePage onNavigate={setCurrentPage} />;
+        break;
     }
+
+    return (
+      <Suspense fallback={
+        <div className="flex h-[60vh] items-center justify-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-primary"></div>
+        </div>
+      }>
+        {PageComponent}
+      </Suspense>
+    );
   };
 
   return (

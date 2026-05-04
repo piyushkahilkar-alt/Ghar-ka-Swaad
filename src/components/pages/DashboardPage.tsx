@@ -2,14 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { LogOut, History, Package, User, Bell, MapPin, PauseCircle, PlayCircle, X, Gift, Copy, CheckCircle2 } from 'lucide-react';
 import { BRAND_DATA } from '../../constants';
+import { db, auth } from '../../firebase';
+import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { handleFirestoreError, OperationType } from '../../utils/firestoreError';
 
 export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) => void }) {
   const [userData, setUserData] = useState<any>(null);
   const [orders, setOrders] = useState<any>(null);
+  const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [editProfileData, setEditProfileData] = useState({ name: '', phoneOrEmail: '' });
+  const [editProfileData, setEditProfileData] = useState({ name: '', phone: '' });
   const [profileMsg, setProfileMsg] = useState({ type: '', text: '' });
   
   const [showPauseModal, setShowPauseModal] = useState(false);
@@ -22,37 +26,106 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
     menuAnnouncements: false,
   });
 
+  const getActiveUserStr = () => {
+     // User is available from auth directly or storage override
+     return sessionStorage.getItem('user') || localStorage.getItem('user');
+  };
+
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+    const userStr = getActiveUserStr();
+    if (!userStr) {
       onNavigate('login');
       return;
     }
 
-    // Fetch user and order data
+    const { uid } = JSON.parse(userStr);
+
     const fetchDashboardData = async () => {
       try {
-        const [userRes, ordersRes] = await Promise.all([
-          fetch('/api/profile', { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch('/api/orders', { headers: { 'Authorization': `Bearer ${token}` } })
-        ]);
-
-        if (!userRes.ok) throw new Error('Failed to fetch profile');
+        const localUser = JSON.parse(userStr);
         
-        const user = await userRes.json();
-        const ordersData = await ordersRes.json();
-
-        setUserData(user);
-        setEditProfileData({ name: user.name, phoneOrEmail: user.phoneOrEmail });
-        if (user.notifications) {
-          setNotifications(user.notifications);
+        // 1. Optimistically display cached local data instantly
+        setUserData(localUser);
+        setEditProfileData({ name: localUser.name || '', phone: localUser.phone || '' });
+        if (localUser.notifications) {
+          setNotifications(localUser.notifications);
         }
-        setOrders(ordersData);
-      } catch (err) {
-        console.error(err);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        onNavigate('login');
+        
+        const localHistory = localUser?.subscription?.planName ? [
+          { id: 1, date: new Date().toISOString().split('T')[0], meal: localUser.subscription.planName, status: 'Out for Delivery' },
+        ] : [];
+    
+        setOrders({
+          activePlan: localUser?.subscription?.planName || null,
+          history: localHistory,
+          userLocation: {
+            address: localUser?.address,
+            mapLink: localUser?.mapLink,
+            latitude: localUser?.latitude,
+            longitude: localUser?.longitude
+          }
+        });
+        
+        // Stop loading spinner immediately
+        setLoading(false);
+
+        // 2. Fetch fresh data quietly in background
+        let freshUser: any = null;
+        try {
+          const userRef = doc(db, 'users', uid);
+          const userDoc = await getDoc(userRef);
+          if (userDoc.exists()) {
+            freshUser = userDoc.data();
+          }
+        } catch (dbErr: any) {
+          console.warn("Could not fetch latest user data from DB, using cached auth data", dbErr);
+        }
+
+        if (freshUser) {
+          setUserData(freshUser);
+          setEditProfileData({ name: freshUser.name || '', phone: freshUser.phone || '' });
+          if (freshUser.notifications) {
+            setNotifications(freshUser.notifications);
+          }
+          
+          const storage = sessionStorage.getItem('token') ? sessionStorage : localStorage;
+          storage.setItem('user', JSON.stringify({ uid: uid, email: localUser.email, ...freshUser }));
+
+          const freshHistory = freshUser?.subscription?.planName ? [
+            { id: 1, date: new Date().toISOString().split('T')[0], meal: freshUser.subscription.planName, status: 'Out for Delivery' },
+          ] : [];
+      
+          setOrders({
+            activePlan: freshUser?.subscription?.planName || null,
+            history: freshHistory,
+            userLocation: {
+              address: freshUser?.address,
+              mapLink: freshUser?.mapLink,
+              latitude: freshUser?.latitude,
+              longitude: freshUser?.longitude
+            }
+          });
+          
+          // Fetch payment history
+          try {
+              const paymentsRef = collection(db, 'payments');
+              const q = query(paymentsRef, where("userId", "==", uid));
+              const paymentsSnapshot = await getDocs(q);
+              const paymentsList = paymentsSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+              paymentsList.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+              setPaymentHistory(paymentsList);
+          } catch(paymentErr) {
+              console.error("Error fetching payments", paymentErr);
+          }
+        }
+      } catch (err: any) {
+        console.error("Dashboard Sync Error:", err);
+        // Do not force logout if simply offline
+        if (err.message && err.message.includes('offline')) {
+           console.warn("Operating safely with cached profile due to network offline mode.");
+        } else if (err.code === 'permission-denied') {
+          // Keep them logged in but maybe show error
+        }
       } finally {
         setLoading(false);
       }
@@ -62,8 +135,11 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
   }, [onNavigate]);
 
   const handleLogout = () => {
+    auth.signOut();
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
     onNavigate('home');
   };
 
@@ -71,53 +147,49 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
     e.preventDefault();
     setProfileMsg({ type: '', text: '' });
     
-    const token = localStorage.getItem('token');
-    if (!token) return;
+    const userStr = getActiveUserStr();
+    if (!userStr) return;
+    const { uid, email } = JSON.parse(userStr);
 
     try {
-      const res = await fetch('/api/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(editProfileData)
-      });
+      const userRef = doc(db, 'users', uid);
+      await updateDoc(userRef, editProfileData);
       
-      const data = await res.json();
-      
-      if (!res.ok) throw new Error(data.error || 'Failed to update profile');
-      
-      setUserData(data);
+      setUserData((prev: any) => ({ ...prev, ...editProfileData }));
       setProfileMsg({ type: 'success', text: 'Profile updated successfully!' });
       setIsEditingProfile(false);
       
       // Update local storage
-      const userStr = localStorage.getItem('user');
-      if (userStr) {
-        const userObj = JSON.parse(userStr);
-        localStorage.setItem('user', JSON.stringify({ ...userObj, name: data.name, phoneOrEmail: data.phoneOrEmail }));
-      }
+      const userObj = JSON.parse(userStr);
+      const storage = sessionStorage.getItem('token') ? sessionStorage : localStorage;
+      storage.setItem('user', JSON.stringify({ ...userObj, name: editProfileData.name, phone: editProfileData.phone }));
       
       setTimeout(() => setProfileMsg({ type: '', text: '' }), 3000);
     } catch (err: any) {
       setProfileMsg({ type: 'error', text: err.message });
+      try { handleFirestoreError(err, OperationType.UPDATE, `users/${uid}`); } catch(e) {}
     }
   };
 
   const handlePauseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsPausingStatus(true);
-    const token = localStorage.getItem('token');
+    const userStr = getActiveUserStr();
+    if (!userStr) return;
+    const { uid } = JSON.parse(userStr);
+
     try {
-      const res = await fetch('/api/profile/subscription/pause', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(pauseData)
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to pause subscription');
-      setUserData(data);
+      const userRef = doc(db, 'users', uid);
+      const subscriptionData = {
+        ...userData.subscription,
+        isPaused: true,
+        pauseStartDate: pauseData.startDate,
+        pauseEndDate: pauseData.endDate
+      };
+      
+      await updateDoc(userRef, { subscription: subscriptionData });
+      
+      setUserData((prev: any) => ({ ...prev, subscription: subscriptionData }));
       setShowPauseModal(false);
       setPauseData({ startDate: '', endDate: '' });
     } catch (err) {
@@ -130,15 +202,22 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
 
   const handleResumeSubscription = async () => {
     setIsPausingStatus(true);
-    const token = localStorage.getItem('token');
+    const userStr = getActiveUserStr();
+    if (!userStr) return;
+    const { uid } = JSON.parse(userStr);
+
     try {
-      const res = await fetch('/api/profile/subscription/resume', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to resume subscription');
-      setUserData(data);
+      const userRef = doc(db, 'users', uid);
+      const subscriptionData = {
+        ...userData.subscription,
+        isPaused: false,
+        pauseStartDate: null,
+        pauseEndDate: null
+      };
+
+      await updateDoc(userRef, { subscription: subscriptionData });
+      
+      setUserData((prev: any) => ({ ...prev, subscription: subscriptionData }));
     } catch (err) {
       console.error(err);
       alert('Could not resume subscription');
@@ -148,7 +227,6 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
   };
 
   const handleReorder = () => {
-    // Basic interaction
     window.open(`https://wa.me/${BRAND_DATA.brand.whatsapp.replace(/[^0-9]/g, '')}?text=Hi,%20I'd%20like%20to%20reorder%20my%20last%20meal`, '_blank');
   };
 
@@ -156,19 +234,15 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
     const newVal = !notifications[key];
     setNotifications(prev => ({ ...prev, [key]: newVal }));
     
-    const token = localStorage.getItem('token');
-    if (!token) return;
+    const userStr = getActiveUserStr();
+    if (!userStr) return;
+    const { uid } = JSON.parse(userStr);
 
     setSavingPrefs(true);
     try {
-      await fetch('/api/profile/notifications', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ ...notifications, [key]: newVal })
-      });
+      const userRef = doc(db, 'users', uid);
+      const updatedPrefs = { ...notifications, [key]: newVal };
+      await updateDoc(userRef, { notifications: updatedPrefs });
     } catch (err) {
       console.error('Failed to update notifications', err);
       // Revert on error
@@ -231,7 +305,8 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
             {!isEditingProfile ? (
               <>
                 <h3 className="font-bold text-xl mb-1">{userData?.name}</h3>
-                <p className="text-gray-500 text-sm mb-4">{userData?.phoneOrEmail}</p>
+                <p className="text-gray-500 text-sm mb-1">{userData?.phone}</p>
+                <p className="text-gray-500 text-sm mb-4">{userData?.email}</p>
                 <button 
                   onClick={() => setIsEditingProfile(true)}
                   className="px-4 py-1.5 border border-brand-primary text-brand-primary rounded-lg text-sm font-bold hover:bg-brand-primary hover:text-white transition-colors mb-6"
@@ -253,13 +328,13 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">Contact (Phone/Email)</label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Phone Number</label>
                     <input 
                       type="text" 
                       required
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/50"
-                      value={editProfileData.phoneOrEmail}
-                      onChange={e => setEditProfileData(prev => ({ ...prev, phoneOrEmail: e.target.value }))}
+                      value={editProfileData.phone}
+                      onChange={e => setEditProfileData(prev => ({ ...prev, phone: e.target.value }))}
                     />
                   </div>
                   <div className="flex gap-2 pt-2">
@@ -267,7 +342,7 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
                       type="button" 
                       onClick={() => {
                         setIsEditingProfile(false);
-                        setEditProfileData({ name: userData?.name, phoneOrEmail: userData?.phoneOrEmail });
+                        setEditProfileData({ name: userData?.name, phone: userData?.phoneOrEmail });
                         setProfileMsg({ type: '', text: '' });
                       }}
                       className="flex-1 px-3 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm font-bold hover:bg-gray-50 transition-colors"
@@ -309,6 +384,11 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
                   <div className="flex items-center justify-center gap-2 text-brand-dark font-bold bg-brand-secondary/50 py-3 rounded-xl border border-brand-primary/20">
                     <Package size={18} /> {orders?.activePlan || 'No Active Plan'}
                   </div>
+                  {orders?.activePlan && userData?.subscription?.expiryDate && (
+                    <p className="text-xs text-center text-gray-500 font-bold">
+                        Expires on: {new Date(userData.subscription.expiryDate).toLocaleDateString()}
+                    </p>
+                  )}
                   {(orders?.activePlan) && (
                     <button
                       onClick={() => setShowPauseModal(true)}
@@ -510,6 +590,36 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
             ) : (
               <div className="text-center py-10 bg-gray-50 rounded-2xl">
                 <p className="text-gray-500">No recent orders found.</p>
+              </div>
+            )}
+            
+            <div className="flex items-center justify-between mb-6 mt-12">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="text-brand-primary" />
+                <h2 className="text-2xl font-serif font-bold">Payment History</h2>
+              </div>
+            </div>
+
+            {paymentHistory && paymentHistory.length > 0 ? (
+              <div className="space-y-4">
+                {paymentHistory.map((payment: any) => (
+                  <div key={payment.id} className="flex justify-between items-center p-4 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors">
+                    <div>
+                      <h4 className="font-bold text-gray-800">Subscription: {payment.plan}</h4>
+                      <p className="text-sm text-gray-500">{new Date(payment.createdAt).toLocaleDateString()} &middot; ID: {payment.paymentId ? payment.paymentId.substring(0, 15) + '...' : 'N/A'}</p>
+                    </div>
+                    <div className="text-right">
+                      <h4 className="font-bold text-gray-800">₹{payment.amount}</h4>
+                      <span className="inline-block px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full mt-1">
+                        {payment.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-10 bg-gray-50 rounded-2xl">
+                <p className="text-gray-500">No recent payments found.</p>
               </div>
             )}
           </div>
