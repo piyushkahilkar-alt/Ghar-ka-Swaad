@@ -44,7 +44,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               transition={{ delay: 0.2, duration: 0.6 }}
               className="text-6xl md:text-8xl font-serif font-bold text-gray-900 leading-[0.95] mb-6"
             >
-               Healthy, Affordable <span className="text-brand-accent">Tiffin</span> Hub
+               Best <span className="text-brand-accent">Tiffin Service</span> in Nagpur
             </motion.h1>
             <motion.p 
               initial={{ opacity: 0, y: 20 }}
@@ -82,7 +82,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       <section className="py-24 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-4xl md:text-5xl font-serif font-bold mb-4 uppercase tracking-tight">Why Choose Us?</h2>
+            <h2 className="text-4xl md:text-5xl font-serif font-bold mb-4 uppercase tracking-tight">Why Choose Our Tiffin Service?</h2>
             <div className="w-24 h-1 bg-brand-primary mx-auto mb-6"></div>
             <p className="text-gray-600 text-lg">We bring the warmth and taste of home kitchens to your table, with every meal prepared with love and care.</p>
           </div>
@@ -115,7 +115,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       <section className="py-20 bg-brand-secondary border-y border-brand-primary/10">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-12">
-            <h2 className="text-3xl md:text-4xl font-serif font-bold mb-4 uppercase tracking-tight text-gray-900">Service Areas</h2>
+            <h2 className="text-3xl md:text-4xl font-serif font-bold mb-4 uppercase tracking-tight text-gray-900">Tiffin Delivery Areas in Nagpur</h2>
             <div className="w-16 h-1 bg-brand-accent mx-auto mb-6"></div>
             <p className="text-gray-600 text-lg">We currently deliver our fresh tiffins to these major locations in Nagpur and nearby areas.</p>
           </div>
@@ -144,7 +144,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
           <h2 className="text-4xl md:text-6xl font-serif font-bold text-white mb-8">
-            Start your subscription today &<br className="hidden md:block" /> never worry about food again
+            Start your Tiffin subscription today &<br className="hidden md:block" /> never worry about food again
           </h2>
           <div className="flex flex-col sm:flex-row justify-center items-center gap-6">
              <button 
