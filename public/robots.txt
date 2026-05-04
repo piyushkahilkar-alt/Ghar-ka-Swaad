@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://gharkaswadd.com/sitemap.xml
+Sitemap: https://gharkaswaadngp.vercel.app/sitemap.xml
