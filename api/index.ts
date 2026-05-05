@@ -369,22 +369,37 @@ app.get('/api/orders', authenticateToken, async (req: any, res: any) => {
 // Payment Routes - Razorpay
 app.post('/api/create-order', authenticateToken, async (req: any, res: any) => {
   try {
-    const { amount, currency, receipt } = req.body;
-    const testingAmount = 100; // 1 INR
+    const { amount, currency, receipt, notes } = req.body;
+    const finalAmount = amount || 100;
 
     const razorpayLive = new Razorpay({
-      key_id: "rzp_live_SlNHXXiBlvShoX",
-      key_secret: "y1PuBcho0RssIPRogKuHD0vS",
+      key_id: "rzp_live_SlcqfzS2rFe2iS",
+      key_secret: "GhpYwVYB7YKm1x1rIdimtyOZ",
     });
 
     const options = {
-      amount: testingAmount,
+      amount: finalAmount,
       currency: currency || 'INR',
       receipt: receipt || `receipt_${Date.now()}`,
-      notes: req.body.notes || {}
+      notes: notes || {}
     };
 
     const order = await razorpayLive.orders.create(options);
+    
+    // Save pending order
+    if (adminDb && req.body.notes?.userId) {
+      try {
+        await adminDb.collection("payments").doc(`order_${order.id}`).set({
+          orderId: order.id,
+          userId: req.body.notes.userId,
+          amount: finalAmount / 100,
+          status: "pending",
+          plan: req.body.notes.planName || "Unknown Plan",
+          createdAt: new Date().toISOString()
+        }, { merge: true });
+      } catch (e) { }
+    }
+    
     res.json(order);
   } catch (error) {
     console.error('Razorpay create order error:', error);
@@ -400,7 +415,7 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
       return res.status(400).json({ error: 'Missing payment verification fields' });
     }
 
-    const secret = "y1PuBcho0RssIPRogKuHD0vS";
+    const secret = "GhpYwVYB7YKm1x1rIdimtyOZ";
     if (!secret) throw new Error('Razorpay secret not configured');
 
     const generatedSignature = crypto
@@ -417,12 +432,13 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
       try {
         await adminDb.collection("payments").doc(razorpay_payment_id).set({
           paymentId: razorpay_payment_id,
+          orderId: razorpay_order_id,
           userId: userId,
           amount: numericAmount,
           status: "success",
           plan: planName || "Unknown Plan",
           createdAt: new Date().toISOString()
-        });
+        }, { merge: true });
       } catch (e) {
         console.error("Firebase write error:", e);
       }
@@ -455,7 +471,7 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
 // Razorpay Webhook Endpoint
 app.post('/api/webhook', async (req, res) => {
   try {
-    const webhookSecret = "y1PuBcho0RssIPRogKuHD0vS";
+    const webhookSecret = "GhpYwVYB7YKm1x1rIdimtyOZ";
     const signature = req.headers['x-razorpay-signature'];
     
     if (webhookSecret && signature && (req as any).rawBody) {
@@ -476,16 +492,19 @@ app.post('/api/webhook', async (req, res) => {
       const planName = payment.notes?.planName || 'Unknown Plan';
       const amount = payment.amount / 100;
 
+      console.log(`[Notification Alert] ✅ Payment Successful: ₹${amount} for ${planName}.`);
+      
       if (adminDb) {
         try {
           await adminDb.collection("payments").doc(payment.id).set({
             paymentId: payment.id,
+            orderId: payment.order_id,
             userId: userId,
             amount: amount,
             status: "success",
             plan: planName,
             createdAt: new Date().toISOString()
-          });
+          }, { merge: true });
         } catch (dbErr) {
           console.error("Firebase write failed:", dbErr);
         }
@@ -500,6 +519,29 @@ app.post('/api/webhook', async (req, res) => {
           user.subscription.planName = planName;
           user.subscription.expiryDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
           await user.save();
+        }
+      }
+    } else if (event.event === "payment.failed") {
+      const payment = event.payload.payment.entity;
+      const userId = payment.notes?.userId || 'unknown_user';
+      const planName = payment.notes?.planName || 'Unknown Plan';
+      const amount = payment.amount / 100;
+      
+      console.log(`[Notification Alert] ❌ Payment Failed: ₹${amount} for ${planName} (User: ${userId}).`);
+
+      if (adminDb) {
+        try {
+          await adminDb.collection("payments").doc(payment.id).set({
+            paymentId: payment.id,
+            orderId: payment.order_id,
+            userId: userId,
+            amount: amount,
+            status: "failed",
+            plan: planName,
+            createdAt: new Date().toISOString()
+          }, { merge: true });
+        } catch (dbErr) {
+          console.error("Firebase write failed:", dbErr);
         }
       }
     }

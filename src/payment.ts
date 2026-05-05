@@ -75,7 +75,7 @@ export const startPayment = async (
         onProcessing('Opening Secure Payment...');
 
         // 2. Open Razorpay Checkout Modal
-        const keyId = "rzp_live_SlNHXXiBlvShoX"; // explicitly set as requested by user
+        const keyId = "rzp_live_SlcqfzS2rFe2iS"; // explicitly set as requested by user
         if (!keyId) {
             throw new Error('Razorpay Key ID not found');
         }

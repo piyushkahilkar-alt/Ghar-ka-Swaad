@@ -440,8 +440,8 @@ app.post('/api/create-order', authenticateToken, async (req: any, res: any) => {
     const finalAmount = amount || 100;
 
     const razorpayLive = new Razorpay({
-      key_id: "rzp_live_SlNHXXiBlvShoX",
-      key_secret: "y1PuBcho0RssIPRogKuHD0vS",
+      key_id: "rzp_live_SlcqfzS2rFe2iS",
+      key_secret: "GhpYwVYB7YKm1x1rIdimtyOZ",
     });
 
     const options = {
@@ -452,6 +452,24 @@ app.post('/api/create-order', authenticateToken, async (req: any, res: any) => {
     };
 
     const order = await razorpayLive.orders.create(options);
+    
+    // Save pending order to Firebase before returning to client
+    if (adminDb && notes?.userId) {
+      try {
+        await adminDb.collection("payments").doc(`order_${order.id}`).set({
+          orderId: order.id,
+          userId: notes.userId,
+          amount: finalAmount / 100, // convert paise back to INR
+          status: "pending",
+          plan: notes.planName || "Unknown Plan",
+          createdAt: FieldValue.serverTimestamp()
+        }, { merge: true });
+        console.log(`[Notification Alert] 📝 Created Pending Order for ${notes.userId}: ₹${finalAmount/100}`);
+      } catch (e) {
+        console.error("Firebase save pending order error:", e);
+      }
+    }
+
     res.json(order);
   } catch (error) {
     console.error('Razorpay create order error:', error);
@@ -467,7 +485,7 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
       return res.status(400).json({ error: 'Missing payment verification fields' });
     }
 
-    const secret = "y1PuBcho0RssIPRogKuHD0vS";
+    const secret = "GhpYwVYB7YKm1x1rIdimtyOZ";
     if (!secret) throw new Error('Razorpay secret not configured');
 
     const generatedSignature = crypto
@@ -553,7 +571,7 @@ app.get('/api/orders', authenticateToken, async (req: any, res: any) => {
 // Razorpay Webhook Endpoint
 app.post('/api/webhook', async (req, res) => {
   try {
-    const webhookSecret = "y1PuBcho0RssIPRogKuHD0vS";
+    const webhookSecret = "GhpYwVYB7YKm1x1rIdimtyOZ";
     const signature = req.headers['x-razorpay-signature'];
     
     // Verify Webhook Signature if secret and signature are present
