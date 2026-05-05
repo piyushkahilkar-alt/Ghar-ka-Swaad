@@ -4,12 +4,35 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
+import Razorpay from 'razorpay';
+import { initializeApp, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 
 dotenv.config();
 
+let adminDb: any = null;
+try {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    const adminApp = initializeApp({
+      credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT))
+    });
+    adminDb = getFirestore(adminApp);
+  } else {
+    const adminApp = initializeApp();
+    adminDb = getFirestore(adminApp);
+  }
+} catch (e) {
+  console.log('Firebase admin not fully initialized (waiting for credentials).');
+}
+
 const app = express();
 
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    (req as any).rawBody = buf;
+  }
+}));
 app.use(cors());
 
 // MongoDB connection Mocked
@@ -341,6 +364,154 @@ app.get('/api/orders', authenticateToken, async (req: any, res: any) => {
   } catch(e) {
     res.status(500).json({ error: 'Server error' });
   }
+});
+
+// Payment Routes - Razorpay
+app.post('/api/create-order', authenticateToken, async (req: any, res: any) => {
+  try {
+    const { amount, currency, receipt } = req.body;
+    const testingAmount = 100; // 1 INR
+
+    const razorpayLive = new Razorpay({
+      key_id: "rzp_live_SlNHXXiBlvShoX",
+      key_secret: "y1PuBcho0RssIPRogKuHD0vS",
+    });
+
+    const options = {
+      amount: testingAmount,
+      currency: currency || 'INR',
+      receipt: receipt || `receipt_${Date.now()}`,
+      notes: req.body.notes || {}
+    };
+
+    const order = await razorpayLive.orders.create(options);
+    res.json(order);
+  } catch (error) {
+    console.error('Razorpay create order error:', error);
+    res.status(500).json({ error: 'Failed to create order' });
+  }
+});
+
+app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) => {
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, userId, planName, amount, planId } = req.body;
+
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ error: 'Missing payment verification fields' });
+    }
+
+    const secret = "y1PuBcho0RssIPRogKuHD0vS";
+    if (!secret) throw new Error('Razorpay secret not configured');
+
+    const generatedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest('hex');
+
+    if (generatedSignature !== razorpay_signature) {
+      return res.status(400).json({ error: 'Signature mismatch. Payment verification failed.' });
+    }
+
+    const numericAmount = parseFloat((amount || "0").toString().replace(/[^0-9.]/g, ''));
+    if (adminDb && userId) {
+      try {
+        await adminDb.collection("payments").doc(razorpay_payment_id).set({
+          paymentId: razorpay_payment_id,
+          userId: userId,
+          amount: numericAmount,
+          status: "success",
+          plan: planName || "Unknown Plan",
+          createdAt: new Date().toISOString()
+        });
+      } catch (e) {
+        console.error("Firebase write error:", e);
+      }
+    }
+
+    try {
+       const user = await User.findById(req.user.id || userId);
+       if (user) {
+          user.subscription = user.subscription || {};
+          user.subscription.status = 'active';
+          user.subscription.planName = planName;
+          user.subscription.planId = planId ? planId.toString() : "";
+          user.subscription.isPaused = false;
+          user.subscription.startDate = new Date().toISOString();
+          const renewal = new Date();
+          renewal.setDate(renewal.getDate() + 30);
+          user.subscription.renewalDate = renewal.toISOString();
+          user.subscription.expiryDate = renewal.toISOString();
+          await user.save();
+       }
+    } catch (e) {}
+
+    res.json({ success: true, message: 'Payment verified successfully.' });
+  } catch (error) {
+    console.error('Razorpay verify payment error:', error);
+    res.status(500).json({ error: 'Failed to verify payment' });
+  }
+});
+
+// Razorpay Webhook Endpoint
+app.post('/api/webhook', async (req, res) => {
+  try {
+    const webhookSecret = "y1PuBcho0RssIPRogKuHD0vS";
+    const signature = req.headers['x-razorpay-signature'];
+    
+    if (webhookSecret && signature && (req as any).rawBody) {
+      const expectedSignature = crypto
+        .createHmac('sha256', webhookSecret)
+        .update((req as any).rawBody)
+        .digest('hex');
+      if (expectedSignature !== signature) {
+        return res.status(400).send("Invalid Signature");
+      }
+    }
+
+    const event = req.body;
+    
+    if (event.event === "payment.captured") {
+      const payment = event.payload.payment.entity;
+      const userId = payment.notes?.userId || 'unknown_user';
+      const planName = payment.notes?.planName || 'Unknown Plan';
+      const amount = payment.amount / 100;
+
+      if (adminDb) {
+        try {
+          await adminDb.collection("payments").doc(payment.id).set({
+            paymentId: payment.id,
+            userId: userId,
+            amount: amount,
+            status: "success",
+            plan: planName,
+            createdAt: new Date().toISOString()
+          });
+        } catch (dbErr) {
+          console.error("Firebase write failed:", dbErr);
+        }
+      }
+
+      if (userId !== 'unknown_user') {
+        const user = await User.findById(userId);
+        if (user) {
+          user.subscription = user.subscription || {};
+          user.subscription.status = 'active';
+          user.subscription.isPaused = false;
+          user.subscription.planName = planName;
+          user.subscription.expiryDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+          await user.save();
+        }
+      }
+    }
+    res.status(200).send("OK");
+  } catch (error) {
+    console.error('Webhook processing error:', error);
+    res.status(500).send("Webhook processing failed");
+  }
+});
+
+app.all('/api/*', (req, res) => {
+  res.status(404).json({ error: 'API route not found' });
 });
 
 export default app;

@@ -224,6 +224,40 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           </div>
         </div>
       </section>
+
+      {/* FAQ Section */}
+      <section className="py-24 bg-white hidden sm:block">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl font-serif font-bold mb-4">Frequently Asked Questions</h2>
+            <p className="text-gray-500">Got questions? We've got answers.</p>
+          </motion.div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="bg-slate-50 p-6 rounded-2xl">
+              <h3 className="font-bold text-lg mb-2">Can I customize my meals?</h3>
+              <p className="text-gray-600">Yes! We offer a variety of addons and options to replace sabzi or roti with other items. You can chat with us and let us know your preferences.</p>
+            </div>
+            <div className="bg-slate-50 p-6 rounded-2xl">
+              <h3 className="font-bold text-lg mb-2">How do I pay?</h3>
+              <p className="text-gray-600">We accept Razorpay for online payments, which supports Google Pay, PhonePe, Paytm, cards, and net banking.</p>
+            </div>
+            <div className="bg-slate-50 p-6 rounded-2xl">
+              <h3 className="font-bold text-lg mb-2">Do you deliver to my area?</h3>
+              <p className="text-gray-600">We currently deliver to most major areas within Nagpur. If you are unsure, please reach out via our AI Chat below or WhatsApp.</p>
+            </div>
+            <div className="bg-slate-50 p-6 rounded-2xl">
+              <h3 className="font-bold text-lg mb-2">Can I cancel my subscription?</h3>
+              <p className="text-gray-600">Yes, you can pause or cancel your subscription anytime from your dashboard.</p>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

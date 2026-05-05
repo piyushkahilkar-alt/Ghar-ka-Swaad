@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { LogOut, History, Package, User, Bell, MapPin, PauseCircle, PlayCircle, X, Gift, Copy, CheckCircle2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { BRAND_DATA } from '../../constants';
 import { db, auth } from '../../firebase';
 import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
@@ -455,45 +456,49 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
           transition={{ delay: 0.1 }}
           className="md:col-span-2 space-y-8"
         >
-          <div className="bg-white p-6 md:p-8 rounded-3xl shadow-lg border border-gray-100">
-            <div className="flex items-center justify-between mb-6">
+          <div className="bg-white p-6 md:p-8 rounded-3xl shadow-lg border border-brand-primary/10 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-brand-primary/5 rounded-full -translate-y-1/2 translate-x-1/3 blur-2xl"></div>
+            <div className="flex items-center justify-between mb-6 relative z-10">
               <div className="flex items-center gap-3">
                 <Gift className="text-brand-primary" />
                 <h2 className="text-2xl font-serif font-bold">Refer & Earn</h2>
               </div>
             </div>
-            <div className="bg-brand-secondary/30 p-6 rounded-2xl border border-brand-primary/10 flex flex-col md:flex-row items-center gap-6">
+            <div className="bg-gradient-to-r from-brand-secondary/40 to-brand-secondary/10 p-6 rounded-2xl border border-brand-primary/20 flex flex-col md:flex-row items-center gap-8 relative z-10">
                <div className="flex-1">
-                 <h3 className="font-bold text-lg text-gray-800 mb-2">Invite friends, get ₹100 off!</h3>
-                 <p className="text-sm text-gray-600 mb-4">Share your unique code with friends. When they subscribe to any plan, they get 10% off their first month, and you get ₹100 off your next renewal.</p>
-                 <div className="flex flex-col sm:flex-row gap-2">
-                   <div className="bg-white border border-gray-200 px-4 py-2.5 rounded-xl font-mono font-bold text-brand-dark tracking-wide flex items-center justify-between flex-1">
-                     {userData?.referralCode || 'GHS-WELCOME'}
+                 <h3 className="font-bold text-xl text-gray-800 mb-2">Invite friends, get ₹100 off!</h3>
+                 <p className="text-sm text-gray-600 mb-5">Share your unique code with friends. When they subscribe to any plan, they get 10% off their first month, and you get ₹100 off your next renewal.</p>
+                 <div className="flex flex-col sm:flex-row gap-3">
+                   <div className="bg-white border-2 border-brand-primary/20 xl:w-64 px-4 py-3 rounded-xl font-mono font-bold text-brand-dark tracking-wide flex items-center justify-between shadow-sm">
+                     <span className="truncate">{userData?.referralCode || (userData?.uid ? `GHS-${userData.uid.substring(0, 6).toUpperCase()}` : 'GHS-WELCOME')}</span>
                      <button 
                        onClick={() => {
-                         navigator.clipboard.writeText(userData?.referralCode || 'GHS-WELCOME');
-                         alert('Referral code copied to clipboard!');
+                         navigator.clipboard.writeText(userData?.referralCode || (userData?.uid ? `GHS-${userData.uid.substring(0, 6).toUpperCase()}` : 'GHS-WELCOME'));
+                         toast.success('Referral code copied!');
                        }}
-                       className="text-brand-primary hover:text-brand-dark ml-2 flex items-center justify-center p-1"
+                       className="text-brand-primary hover:text-brand-dark bg-brand-primary/10 hover:bg-brand-primary/20 rounded-lg p-1.5 transition-colors"
                        aria-label="Copy code"
                      >
-                       <Copy size={16} />
+                       <Copy size={18} />
                      </button>
                    </div>
                    <button 
                      onClick={() => {
-                       const message = `Hey! Use my code ${userData?.referralCode || 'GHS-WELCOME'} to get 10% off your first month at Ghar Ka Swaad!`;
+                       const code = userData?.referralCode || (userData?.uid ? `GHS-${userData.uid.substring(0, 6).toUpperCase()}` : 'GHS-WELCOME');
+                       const message = `Hey! Use my code ${code} to get 10% off your first month at Ghar Ka Swaad!`;
                        window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
                      }}
-                     className="bg-brand-primary text-white font-bold px-6 py-2.5 rounded-xl hover:bg-brand-dark transition-colors whitespace-nowrap flex items-center justify-center gap-2"
+                     className="bg-brand-primary text-white font-bold px-6 py-3 rounded-xl hover:bg-brand-dark transition-colors whitespace-nowrap flex items-center justify-center gap-2 shadow-md shadow-brand-primary/30"
                    >
-                     <Gift size={16} /> Share
+                     <Gift size={18} /> Share on WhatsApp
                    </button>
                  </div>
                </div>
-               <div className="bg-white p-4 rounded-xl border border-gray-100 text-center shadow-sm w-full md:w-auto shrink-0 md:min-w-[120px]">
-                 <span className="block text-3xl font-bold text-brand-primary mb-1">₹{userData?.referralRewards || 0}</span>
-                 <span className="text-xs uppercase tracking-wider text-gray-500 font-bold block">Rewards Earned</span>
+               <div className="bg-white p-6 rounded-2xl border-2 border-brand-primary/10 text-center shadow-lg w-full md:w-auto shrink-0 md:min-w-[160px] flex flex-col items-center justify-center">
+                 <div className="mb-1 text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-brand-primary to-orange-500">
+                   ₹{userData?.referralRewards || 0}
+                 </div>
+                 <span className="text-xs uppercase tracking-widest text-gray-500 font-bold">Rewards Earned</span>
                </div>
             </div>
           </div>

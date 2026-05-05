@@ -75,8 +75,6 @@ export const startPayment = async (
         onProcessing('Opening Secure Payment...');
 
         // 2. Open Razorpay Checkout Modal
-        // Use explicitly provided test key if environment variable is missing or different
-        const envKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
         const keyId = "rzp_live_SlNHXXiBlvShoX"; // explicitly set as requested by user
         if (!keyId) {
             throw new Error('Razorpay Key ID not found');
