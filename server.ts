@@ -9,7 +9,7 @@ import dotenv from 'dotenv';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
 import { initializeApp, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
 dotenv.config();
 
@@ -434,10 +434,10 @@ app.put('/api/profile/subscription/resume', authenticateToken, async (req: any, 
 // Payment Routes - Razorpay
 app.post('/api/create-order', authenticateToken, async (req: any, res: any) => {
   try {
-    const { amount, currency, receipt } = req.body;
+    const { amount, currency, receipt, notes } = req.body;
     
-    // As per user request, charge 1 rupee (100 paise) for testing instead of full amount
-    const testingAmount = 100; // 1 INR
+    // Ensure amount is valid and in paise
+    const finalAmount = amount || 100;
 
     const razorpayLive = new Razorpay({
       key_id: "rzp_live_SlNHXXiBlvShoX",
@@ -445,10 +445,10 @@ app.post('/api/create-order', authenticateToken, async (req: any, res: any) => {
     });
 
     const options = {
-      amount: testingAmount,
+      amount: finalAmount,
       currency: currency || 'INR',
       receipt: receipt || `receipt_${Date.now()}`,
-      notes: req.body.notes || {}
+      notes: notes || {}
     };
 
     const order = await razorpayLive.orders.create(options);
@@ -485,12 +485,13 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
       try {
         await adminDb.collection("payments").doc(razorpay_payment_id).set({
           paymentId: razorpay_payment_id,
+          orderId: razorpay_order_id,
           userId: userId,
           amount: numericAmount,
           status: "success",
           plan: planName || "Unknown Plan",
-          createdAt: new Date().toISOString()
-        });
+          createdAt: FieldValue.serverTimestamp()
+        }, { merge: true });
       } catch (e) {
         console.error("Firebase payment creation during fast verify failed:", e);
       }
@@ -578,22 +579,23 @@ app.post('/api/webhook', async (req, res) => {
       const userPhone = payment.contact || 'Customer'; // Razorpay includes contact
       const amount = payment.amount / 100; // convert paise to INR
 
-      // WhatsApp Notification Simulation
-      console.log(`[WhatsApp] 💬 Sent Success Msg to Customer (${userPhone}): "Your payment of ₹${amount} for ${planName} was successful. Welcome to Ghar Ka Swaad!"`);
-      console.log(`[WhatsApp] 💬 Sent Alert to Owner (8275116821): "New Payment Received: ₹${amount} for ${planName} from ${userPhone}."`);
+      // Console Notification (Free substitution for WhatsApp/SMS)
+      console.log(`[Notification Alert] ✅ Payment Successful: ₹${amount} for ${planName} from ${userPhone}.`);
+      console.log(`[Notification Alert] 👤 User ${userId} successfully subscribed to ${planName}.`);
 
-      // 👉 Save to Firebase Payments
+      // 👉 Save to Firebase Payments (payment captured)
       if (adminDb) {
         try {
           await adminDb.collection("payments").doc(payment.id).set({
             paymentId: payment.id,
+            orderId: payment.order_id || 'unknown_order',
             userId: userId,
             amount: amount,
             status: "success",
             plan: planName,
-            createdAt: new Date().toISOString()
-          });
-          console.log("Successfully saved payment to Firebase.");
+            createdAt: FieldValue.serverTimestamp()
+          }, { merge: true });
+          console.log("Successfully saved successful payment to Firebase.");
         } catch (dbErr) {
           console.error("Firebase write failed (check permissions/ADC):", dbErr);
         }
@@ -614,11 +616,29 @@ app.post('/api/webhook', async (req, res) => {
     } else if (event.event === "payment.failed") {
       const payment = event.payload.payment.entity;
       const amount = payment.amount / 100; 
-      const planName = payment.notes?.planName || 'Plan';
+      const planName = payment.notes?.planName || 'Unknown Plan';
       const userPhone = payment.contact || 'Customer';
+      const userId = payment.notes?.userId || 'unknown_user';
       
-      console.log(`[WhatsApp] 💬 Sent Failure Msg to Customer (${userPhone}): "Your payment of ₹${amount} for ${planName} failed. Please try again."`);
-      console.log(`[WhatsApp] 💬 Sent Alert to Owner (8275116821): "Payment Failed: ₹${amount} for ${planName} from ${userPhone}."`);
+      console.log(`[Notification Alert] ❌ Payment Failed: ₹${amount} for ${planName} from ${userPhone} (User: ${userId}).`);
+
+      // 👉 Save failed transaction to Firebase
+      if (adminDb) {
+        try {
+          await adminDb.collection("payments").doc(payment.id).set({
+            paymentId: payment.id,
+            orderId: payment.order_id || 'unknown_order',
+            userId: userId,
+            amount: amount,
+            status: "failed",
+            plan: planName,
+            createdAt: FieldValue.serverTimestamp()
+          }, { merge: true });
+          console.log("Successfully saved failed payment to Firebase.");
+        } catch (dbErr) {
+          console.error("Firebase write failed:", dbErr);
+        }
+      }
     }
 
     res.status(200).send("OK");
