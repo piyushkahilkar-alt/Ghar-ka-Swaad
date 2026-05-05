@@ -73,7 +73,7 @@ export const startPayment = async (
             description: "₹1 Verification for Subscription",
             order_id: verifyOrderData.id,
             handler: async function (response: any) {
-                window.alert("Verification Successful! Now initiating actual payment...");
+                toast.success("Verification Successful! Now initiating actual payment...", { duration: 3000 });
                 
                 // --- STEP 2: Actual Plan Payment ---
                 try {
@@ -102,11 +102,9 @@ export const startPayment = async (
                             try {
                                 onProcessing('Activating Subscription...');
                                 await verifyPayment(finalResponse, token, userStr, plan);
-                                window.alert("Payment Successful!");
                                 toast.success('Payment Successful! Activating plan...', { duration: 4000 });
                                 onSuccess(finalResponse.razorpay_payment_id);
                             } catch (err: any) {
-                                window.alert("Payment Verification Failed!");
                                 toast.error(`Verification Failed: ${err.message}`);
                                 onError(err);
                             }
@@ -117,13 +115,16 @@ export const startPayment = async (
 
                     const rzpFinal = new (window as any).Razorpay(actualOptions);
                     rzpFinal.on('payment.failed', function(res: any) {
-                        window.alert("Actual Payment Failed!");
-                        toast.error(`Payment Failed: ${res?.error?.description}`);
+                        toast.error(`Actual Payment Failed: ${res?.error?.description}`);
                         onError(new Error(`Payment Failed: ${res?.error?.description}`));
                     });
-                    rzpFinal.open();
+                    
+                    // Delay the second modal slightly so the first one completely closes
+                    setTimeout(() => {
+                        rzpFinal.open();
+                    }, 500);
                 } catch(actualErr: any) {
-                    window.alert("Actual Payment Initiation Failed!");
+                    toast.error(`Main Payment Failed: ${actualErr.message}`);
                     onError(actualErr);
                 }
             },
@@ -133,7 +134,6 @@ export const startPayment = async (
 
         const rzpVerify = new (window as any).Razorpay(verifyOptions);
         rzpVerify.on('payment.failed', function (res: any) {
-            window.alert("Verification Payment Failed!");
             const errDesc = res?.error?.description || "Payment Failed";
             toast.error(`Verification Failed: ${errDesc}`);
             onError(new Error(`Verification Failed: ${errDesc}`));
@@ -141,7 +141,6 @@ export const startPayment = async (
         rzpVerify.open();
 
     } catch (error: any) {
-        window.alert("Failed to start payment process!");
         toast.error(error.message || "An error occurred");
         onError(error);
     }

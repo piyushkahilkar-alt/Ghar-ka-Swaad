@@ -17,7 +17,7 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
   const [editProfileData, setEditProfileData] = useState({ name: '', phone: '' });
   const [profileMsg, setProfileMsg] = useState({ type: '', text: '' });
   
-  const [showPauseModal, setShowPauseModal] = useState(false);
+  const [showPauseModal, setShowPauseModal] = useState<number | boolean>(false);
   const [pauseData, setPauseData] = useState({ startDate: '', endDate: '' });
   const [isPausingStatus, setIsPausingStatus] = useState(false);
   const [showTrackingMap, setShowTrackingMap] = useState(false);
@@ -181,16 +181,35 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
 
     try {
       const userRef = doc(db, 'users', uid);
-      const subscriptionData = {
-        ...userData.subscription,
-        isPaused: true,
-        pauseStartDate: pauseData.startDate,
-        pauseEndDate: pauseData.endDate
-      };
+      let updatePayload: any = {};
+      let updatedUserData = { ...userData };
+
+      if (typeof showPauseModal === 'number' && userData.subscriptions) {
+        // Handle multiple subscriptions array
+        const newSubscriptions = [...userData.subscriptions];
+        newSubscriptions[showPauseModal] = {
+          ...newSubscriptions[showPauseModal],
+          isPaused: true,
+          pauseStartDate: pauseData.startDate,
+          pauseEndDate: pauseData.endDate
+        };
+        updatePayload.subscriptions = newSubscriptions;
+        updatedUserData.subscriptions = newSubscriptions;
+      } else {
+        // Handle legacy single subscription
+        const subscriptionData = {
+          ...userData.subscription,
+          isPaused: true,
+          pauseStartDate: pauseData.startDate,
+          pauseEndDate: pauseData.endDate
+        };
+        updatePayload.subscription = subscriptionData;
+        updatedUserData.subscription = subscriptionData;
+      }
       
-      await updateDoc(userRef, { subscription: subscriptionData });
+      await updateDoc(userRef, updatePayload);
       
-      setUserData((prev: any) => ({ ...prev, subscription: subscriptionData }));
+      setUserData(updatedUserData);
       setShowPauseModal(false);
       setPauseData({ startDate: '', endDate: '' });
     } catch (err) {
@@ -201,7 +220,7 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
     }
   };
 
-  const handleResumeSubscription = async () => {
+  const handleResumeSubscription = async (index?: number) => {
     setIsPausingStatus(true);
     const userStr = getActiveUserStr();
     if (!userStr) return;
@@ -209,16 +228,33 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
 
     try {
       const userRef = doc(db, 'users', uid);
-      const subscriptionData = {
-        ...userData.subscription,
-        isPaused: false,
-        pauseStartDate: null,
-        pauseEndDate: null
-      };
+      let updatePayload: any = {};
+      let updatedUserData = { ...userData };
 
-      await updateDoc(userRef, { subscription: subscriptionData });
+      if (typeof index === 'number' && userData.subscriptions) {
+        const newSubscriptions = [...userData.subscriptions];
+        newSubscriptions[index] = {
+          ...newSubscriptions[index],
+          isPaused: false,
+          pauseStartDate: null,
+          pauseEndDate: null
+        };
+        updatePayload.subscriptions = newSubscriptions;
+        updatedUserData.subscriptions = newSubscriptions;
+      } else {
+        const subscriptionData = {
+          ...userData.subscription,
+          isPaused: false,
+          pauseStartDate: null,
+          pauseEndDate: null
+        };
+        updatePayload.subscription = subscriptionData;
+        updatedUserData.subscription = subscriptionData;
+      }
+
+      await updateDoc(userRef, updatePayload);
       
-      setUserData((prev: any) => ({ ...prev, subscription: subscriptionData }));
+      setUserData(updatedUserData);
     } catch (err) {
       console.error(err);
       alert('Could not resume subscription');
@@ -397,7 +433,7 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
                             Paused until {sub.pauseEndDate ? new Date(sub.pauseEndDate).toLocaleDateString() : 'Manual Resume'}
                           </p>
                           <button
-                            onClick={handleResumeSubscription}
+                            onClick={() => handleResumeSubscription(idx)}
                             disabled={isPausingStatus}
                             className="w-full py-2 bg-brand-primary text-white rounded-lg text-sm font-bold hover:bg-brand-dark transition-colors flex items-center justify-center gap-2"
                           >
@@ -415,7 +451,7 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
                             </p>
                           )}
                           <button
-                            onClick={() => setShowPauseModal(true)}
+                            onClick={() => setShowPauseModal(idx)}
                             className="w-full py-2 border border-brand-primary text-brand-primary rounded-lg text-sm font-bold hover:bg-brand-primary hover:text-white transition-colors flex items-center justify-center gap-2"
                           >
                             <PauseCircle size={16} /> Pause Subscription
@@ -436,7 +472,7 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
                       Paused until {userData?.subscription?.pauseEndDate ? new Date(userData.subscription.pauseEndDate).toLocaleDateString() : 'Manual Resume'}
                     </p>
                     <button
-                      onClick={handleResumeSubscription}
+                      onClick={() => handleResumeSubscription()}
                       disabled={isPausingStatus}
                       className="w-full py-2 bg-brand-primary text-white rounded-lg text-sm font-bold hover:bg-brand-dark transition-colors flex items-center justify-center gap-2"
                     >

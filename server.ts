@@ -437,8 +437,8 @@ app.post('/api/create-order', authenticateToken, async (req: any, res: any) => {
   try {
     const { amount, currency, receipt, notes } = req.body;
     
-    // Force amount to 100 paise (1 INR) for testing
-    const finalAmount = 100;
+    // Use actual amount, fallback to 100 paise (1 INR) if not provided
+    const finalAmount = amount || 100;
 
     const razorpayLive = new Razorpay({
       key_id: "rzp_live_SlcqfzS2rFe2iS",
