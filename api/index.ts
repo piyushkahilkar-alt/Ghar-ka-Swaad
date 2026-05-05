@@ -492,16 +492,22 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
     try {
        const user = await User.findById(req.user.id || userId);
        if (user) {
-          user.subscription = user.subscription || {};
-          user.subscription.status = 'active';
-          user.subscription.planName = planName;
-          user.subscription.planId = planId ? planId.toString() : "";
-          user.subscription.isPaused = false;
-          user.subscription.startDate = new Date().toISOString();
-          const renewal = new Date();
-          renewal.setDate(renewal.getDate() + 30);
-          user.subscription.renewalDate = renewal.toISOString();
-          user.subscription.expiryDate = renewal.toISOString();
+          user.subscriptions = user.subscriptions || [];
+          const now = new Date();
+          const renewal = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+          const newSub = {
+              status: 'active',
+              planName: planName,
+              planId: planId ? planId.toString() : "",
+              isPaused: false,
+              startDate: now.toISOString(),
+              renewalDate: renewal.toISOString(),
+              expiryDate: renewal.toISOString()
+          };
+          user.subscriptions.push(newSub);
+
+          user.subscription = newSub; // fallback
           await user.save();
        }
     } catch (e) {}
@@ -597,11 +603,17 @@ app.post('/api/webhook', async (req, res) => {
       if (userId !== 'unknown_user') {
         const user = await User.findById(userId);
         if (user) {
-          user.subscription = user.subscription || {};
-          user.subscription.status = 'active';
-          user.subscription.isPaused = false;
-          user.subscription.planName = planName;
-          user.subscription.expiryDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+          user.subscriptions = user.subscriptions || [];
+          const newSub = {
+              status: 'active',
+              planName: planName,
+              isPaused: false,
+              startDate: new Date().toISOString(),
+              expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+          };
+          user.subscriptions.push(newSub);
+
+          user.subscription = newSub; // legacy
           await user.save();
         }
       }

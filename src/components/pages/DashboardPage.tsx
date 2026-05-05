@@ -307,7 +307,27 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
               <>
                 <h3 className="font-bold text-xl mb-1">{userData?.name}</h3>
                 <p className="text-gray-500 text-sm mb-1">{userData?.phone}</p>
-                <p className="text-gray-500 text-sm mb-4">{userData?.email}</p>
+                <p className="text-gray-500 text-sm mb-2">{userData?.email}</p>
+                
+                {/* Subscription End Date in Profile */}
+                {userData?.subscriptions && userData.subscriptions.length > 0 ? (
+                  <div className="mb-4">
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Next Expiry</p>
+                    <p className="text-sm font-medium text-brand-dark">
+                      {new Date(
+                        Math.max(...userData.subscriptions.map((s: any) => new Date(s.expiryDate || 0).getTime()))
+                      ).toLocaleDateString()}
+                    </p>
+                  </div>
+                ) : userData?.subscription?.expiryDate ? (
+                  <div className="mb-4">
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Subscription Ends</p>
+                    <p className="text-sm font-medium text-brand-dark">
+                      {new Date(userData.subscription.expiryDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                ) : null}
+
                 <button 
                   onClick={() => setIsEditingProfile(true)}
                   className="px-4 py-1.5 border border-brand-primary text-brand-primary rounded-lg text-sm font-bold hover:bg-brand-primary hover:text-white transition-colors mb-6"
@@ -362,42 +382,90 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
             )}
 
             <div className="w-full pt-6 border-t border-gray-100 mt-auto">
-              <p className="text-xs uppercase tracking-wider text-gray-400 font-bold mb-2">Current Plan</p>
+              <p className="text-xs uppercase tracking-wider text-gray-400 font-bold mb-2">Current Plans</p>
               
-              {userData?.subscription?.isPaused ? (
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-center gap-2 text-amber-600 font-bold bg-amber-50 py-3 rounded-xl border border-amber-200">
-                    <PauseCircle size={18} /> Subscription Paused
-                  </div>
-                  <p className="text-xs text-center text-gray-500">
-                    Paused until {userData?.subscription?.pauseEndDate ? new Date(userData.subscription.pauseEndDate).toLocaleDateString() : 'Manual Resume'}
-                  </p>
-                  <button
-                    onClick={handleResumeSubscription}
-                    disabled={isPausingStatus}
-                    className="w-full py-2 bg-brand-primary text-white rounded-lg text-sm font-bold hover:bg-brand-dark transition-colors flex items-center justify-center gap-2"
-                  >
-                    {isPausingStatus ? 'Resuming...' : <><PlayCircle size={16} /> Resume Delivery</>}
-                  </button>
+              {userData?.subscriptions && userData.subscriptions.length > 0 ? (
+                <div className="space-y-4">
+                  {userData.subscriptions.map((sub: any, idx: number) => (
+                    <div key={idx} className="flex flex-col gap-3 p-4 border border-gray-100 rounded-2xl bg-gray-50/50">
+                      {sub.isPaused ? (
+                        <>
+                          <div className="flex items-center justify-center gap-2 text-amber-600 font-bold bg-amber-50 py-2 rounded-xl border border-amber-200">
+                            <PauseCircle size={18} /> {sub.planName} (Paused)
+                          </div>
+                          <p className="text-xs text-center text-gray-500">
+                            Paused until {sub.pauseEndDate ? new Date(sub.pauseEndDate).toLocaleDateString() : 'Manual Resume'}
+                          </p>
+                          <button
+                            onClick={handleResumeSubscription}
+                            disabled={isPausingStatus}
+                            className="w-full py-2 bg-brand-primary text-white rounded-lg text-sm font-bold hover:bg-brand-dark transition-colors flex items-center justify-center gap-2"
+                          >
+                            {isPausingStatus ? 'Resuming...' : <><PlayCircle size={16} /> Resume Delivery</>}
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-center gap-2 text-brand-dark font-bold bg-brand-secondary/50 py-2 rounded-xl border border-brand-primary/20">
+                            <Package size={18} /> {sub.planName}
+                          </div>
+                          {sub.expiryDate && (
+                            <p className="text-xs text-center text-gray-500 font-bold">
+                                Expires on: {new Date(sub.expiryDate).toLocaleDateString()}
+                            </p>
+                          )}
+                          <button
+                            onClick={() => setShowPauseModal(true)}
+                            className="w-full py-2 border border-brand-primary text-brand-primary rounded-lg text-sm font-bold hover:bg-brand-primary hover:text-white transition-colors flex items-center justify-center gap-2"
+                          >
+                            <PauseCircle size={16} /> Pause Subscription
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-center gap-2 text-brand-dark font-bold bg-brand-secondary/50 py-3 rounded-xl border border-brand-primary/20">
-                    <Package size={18} /> {orders?.activePlan || 'No Active Plan'}
-                  </div>
-                  {orders?.activePlan && userData?.subscription?.expiryDate && (
-                    <p className="text-xs text-center text-gray-500 font-bold">
-                        Expires on: {new Date(userData.subscription.expiryDate).toLocaleDateString()}
+              ) : userData?.subscription?.planName ? (
+                // Legacy single-plan fallback
+                userData?.subscription?.isPaused ? (
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-center gap-2 text-amber-600 font-bold bg-amber-50 py-3 rounded-xl border border-amber-200">
+                      <PauseCircle size={18} /> Subscription Paused
+                    </div>
+                    <p className="text-xs text-center text-gray-500">
+                      Paused until {userData?.subscription?.pauseEndDate ? new Date(userData.subscription.pauseEndDate).toLocaleDateString() : 'Manual Resume'}
                     </p>
-                  )}
-                  {(orders?.activePlan) && (
                     <button
-                      onClick={() => setShowPauseModal(true)}
-                      className="w-full py-2 border border-brand-primary text-brand-primary rounded-lg text-sm font-bold hover:bg-brand-primary hover:text-white transition-colors flex items-center justify-center gap-2"
+                      onClick={handleResumeSubscription}
+                      disabled={isPausingStatus}
+                      className="w-full py-2 bg-brand-primary text-white rounded-lg text-sm font-bold hover:bg-brand-dark transition-colors flex items-center justify-center gap-2"
                     >
-                      <PauseCircle size={16} /> Pause Subscription
+                      {isPausingStatus ? 'Resuming...' : <><PlayCircle size={16} /> Resume Delivery</>}
                     </button>
-                  )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-center gap-2 text-brand-dark font-bold bg-brand-secondary/50 py-3 rounded-xl border border-brand-primary/20">
+                      <Package size={18} /> {orders?.activePlan || 'No Active Plan'}
+                    </div>
+                    {orders?.activePlan && userData?.subscription?.expiryDate && (
+                      <p className="text-xs text-center text-gray-500 font-bold">
+                          Expires on: {new Date(userData.subscription.expiryDate).toLocaleDateString()}
+                      </p>
+                    )}
+                    {(orders?.activePlan) && (
+                      <button
+                        onClick={() => setShowPauseModal(true)}
+                        className="w-full py-2 border border-brand-primary text-brand-primary rounded-lg text-sm font-bold hover:bg-brand-primary hover:text-white transition-colors flex items-center justify-center gap-2"
+                      >
+                        <PauseCircle size={16} /> Pause Subscription
+                      </button>
+                    )}
+                  </div>
+                )
+              ) : (
+                <div className="text-center py-4 bg-gray-50 rounded-2xl border border-gray-100">
+                   <p className="text-gray-500 text-sm font-medium">No active plans.</p>
                 </div>
               )}
             </div>

@@ -10,37 +10,33 @@ export const sendWhatsAppMessage = async (to: string, message: string) => {
   console.log(`Message:\n${message}`);
   console.log(`=======================================================\n`);
 
-  // TODO: Add real WhatsApp Business API / Twilio / UltraMsg integration here.
-  // Example for Twilio:
+  // To enable REAL WhatsApp messages, you need a provider. For example, using UltraMsg (very easy HTTP API)
+  // 1. Sign up at ultramsg.com
+  // 2. Get an Instance ID and a Token.
+  // 3. Set process.env.ULTRAMSG_INSTANCE_ID and process.env.ULTRAMSG_TOKEN in your platform settings.
+  // Uncomment the code below once configured:
+
   /*
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const client = require('twilio')(accountSid, authToken);
-  
-  try {
-    await client.messages.create({
-      body: message,
-      from: 'whatsapp:+14155238886',
-      to: `whatsapp:+${formattedNumber}`
-    });
-    console.log("WhatsApp message sent successfully via Twilio.");
-  } catch (err) {
-    console.error("Twilio WhatsApp error:", err);
+  const instanceId = process.env.ULTRAMSG_INSTANCE_ID;
+  const token = process.env.ULTRAMSG_TOKEN;
+
+  if (instanceId && token) {
+    try {
+      const response = await fetch(`https://api.ultramsg.com/${instanceId}/messages/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          token: token,
+          to: `+${formattedNumber}`,
+          body: message
+        })
+      });
+      const result = await response.json();
+      console.log("Real WhatsApp API Responded:", result);
+    } catch(err) {
+      console.error("Failed to send real WhatsApp message:", err);
+    }
   }
   */
-
-  // Example for Generic HTTP WhatsApp API (like UltraMsg, WATI, etc):
-  /*
-  try {
-    await fetch(`https://api.ultramsg.com/your_instance/messages/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        token: process.env.WHATSAPP_API_TOKEN || '',
-        to: formattedNumber,
-        body: message
-      })
-    });
-  } catch(e) {}
-  */
 };
+
