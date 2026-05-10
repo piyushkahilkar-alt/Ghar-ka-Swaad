@@ -157,6 +157,7 @@ export const verifyEmailOTPFromFirestore = async (email: string, otp: string) =>
     throw new Error("Invalid OTP");
   }
   
+  const result = await loginWithEmailOTP(email);
   await deleteDoc(otpRef);
-  return loginWithEmailOTP(email);
+  return result;
 }
