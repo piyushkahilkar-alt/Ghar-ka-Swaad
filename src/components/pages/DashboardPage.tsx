@@ -281,16 +281,22 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
         updatePayload.subscriptions = newSubscriptions;
         updatedUserData.subscriptions = newSubscriptions;
       } else {
-        updatePayload.subscription = null;
-        updatedUserData.subscription = null;
+        // Use deleteField to ensure it is completely removed from Firestore
+        const { deleteField } = await import('firebase/firestore');
+        updatePayload.subscription = deleteField();
+        delete updatedUserData.subscription;
       }
 
       await updateDoc(userRef, updatePayload);
       setUserData(updatedUserData);
-      // Removed alert as per good UX, let UI update instantly or you can add hot-toast if needed
+      
+      const storage = sessionStorage.getItem('token') ? sessionStorage : localStorage;
+      storage.setItem('user', JSON.stringify({ uid: uid, email: updatedUserData.email, ...updatedUserData }));
+
+      toast.success('Subscription cancelled successfully.');
     } catch (err) {
       console.error(err);
-      alert('Could not cancel subscription');
+      toast.error('Could not cancel subscription');
     } finally {
       setIsPausingStatus(false);
     }
@@ -457,69 +463,26 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
                 <div className="space-y-4">
                   {userData.subscriptions.map((sub: any, idx: number) => (
                     <div key={idx} className="flex flex-col gap-3 p-4 border border-gray-100 rounded-2xl bg-gray-50/50">
-                      {sub.isPaused ? (
-                        <>
-                          <div className="flex items-center justify-center gap-2 text-amber-600 font-bold bg-amber-50 py-2 rounded-xl border border-amber-200">
-                            <PauseCircle size={18} /> {sub.planName} (Paused)
-                          </div>
-                          <p className="text-xs text-center text-gray-500">
-                            Paused until {sub.pauseEndDate ? new Date(sub.pauseEndDate).toLocaleDateString() : 'Manual Resume'}
+                        <div className="flex items-center justify-center gap-2 text-brand-dark font-bold bg-brand-secondary/50 py-2 rounded-xl border border-brand-primary/20">
+                          <Package size={18} /> {sub.planName}
+                        </div>
+                        {sub.expiryDate && (
+                          <p className="text-xs text-center text-gray-500 font-bold">
+                              Expires on: {new Date(sub.expiryDate).toLocaleDateString()}
                           </p>
-                          <button
-                            onClick={() => handleResumeSubscription(idx)}
-                            disabled={isPausingStatus}
-                            className="w-full py-2 bg-brand-primary text-white rounded-lg text-sm font-bold hover:bg-brand-dark transition-colors flex items-center justify-center gap-2"
-                          >
-                            {isPausingStatus ? 'Resuming...' : <><PlayCircle size={16} /> Resume Delivery</>}
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <div className="flex items-center justify-center gap-2 text-brand-dark font-bold bg-brand-secondary/50 py-2 rounded-xl border border-brand-primary/20">
-                            <Package size={18} /> {sub.planName}
-                          </div>
-                          {sub.expiryDate && (
-                            <p className="text-xs text-center text-gray-500 font-bold">
-                                Expires on: {new Date(sub.expiryDate).toLocaleDateString()}
-                            </p>
-                          )}
-                          <button
-                            onClick={() => setShowPauseModal(idx)}
-                            className="w-full py-2 border border-brand-primary text-brand-primary rounded-lg text-sm font-bold hover:bg-brand-primary hover:text-white transition-colors flex items-center justify-center gap-2"
-                          >
-                            <PauseCircle size={16} /> Pause Subscription
-                          </button>
-                          <button
-                            onClick={() => handleCancelSubscription(idx)}
-                            disabled={isPausingStatus}
-                            className="w-full py-2 border border-red-500 text-red-500 rounded-lg text-sm font-bold hover:bg-red-500 hover:text-white transition-colors flex items-center justify-center gap-2"
-                          >
-                            <X size={16} /> Cancel Subscription
-                          </button>
-                        </>
-                      )}
+                        )}
+                        <button
+                          onClick={() => handleCancelSubscription(idx)}
+                          disabled={isPausingStatus}
+                          className="w-full py-2 border border-red-500 text-red-500 rounded-lg text-sm font-bold hover:bg-red-500 hover:text-white transition-colors flex items-center justify-center gap-2"
+                        >
+                          <X size={16} /> Cancel Subscription
+                        </button>
                     </div>
                   ))}
                 </div>
               ) : userData?.subscription?.planName ? (
                 // Legacy single-plan fallback
-                userData?.subscription?.isPaused ? (
-                  <div className="flex flex-col gap-3">
-                    <div className="flex items-center justify-center gap-2 text-amber-600 font-bold bg-amber-50 py-3 rounded-xl border border-amber-200">
-                      <PauseCircle size={18} /> Subscription Paused
-                    </div>
-                    <p className="text-xs text-center text-gray-500">
-                      Paused until {userData?.subscription?.pauseEndDate ? new Date(userData.subscription.pauseEndDate).toLocaleDateString() : 'Manual Resume'}
-                    </p>
-                    <button
-                      onClick={() => handleResumeSubscription()}
-                      disabled={isPausingStatus}
-                      className="w-full py-2 bg-brand-primary text-white rounded-lg text-sm font-bold hover:bg-brand-dark transition-colors flex items-center justify-center gap-2"
-                    >
-                      {isPausingStatus ? 'Resuming...' : <><PlayCircle size={16} /> Resume Delivery</>}
-                    </button>
-                  </div>
-                ) : (
                   <div className="flex flex-col gap-3">
                     <div className="flex items-center justify-center gap-2 text-brand-dark font-bold bg-brand-secondary/50 py-3 rounded-xl border border-brand-primary/20">
                       <Package size={18} /> {orders?.activePlan || 'No Active Plan'}
@@ -530,13 +493,6 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
                       </p>
                     )}
                     {(orders?.activePlan) && (
-                      <>
-                        <button
-                          onClick={() => setShowPauseModal(true)}
-                          className="w-full py-2 border border-brand-primary text-brand-primary rounded-lg text-sm font-bold hover:bg-brand-primary hover:text-white transition-colors flex items-center justify-center gap-2"
-                        >
-                          <PauseCircle size={16} /> Pause Subscription
-                        </button>
                         <button
                           onClick={() => handleCancelSubscription()}
                           disabled={isPausingStatus}
@@ -544,10 +500,8 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
                         >
                           <X size={16} /> Cancel Subscription
                         </button>
-                      </>
                     )}
                   </div>
-                )
               ) : (
                 <div className="text-center py-4 bg-gray-50 rounded-2xl border border-gray-100">
                    <p className="text-gray-500 text-sm font-medium">No active plans.</p>
@@ -784,59 +738,6 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
         </motion.div>
 
       </div>
-
-      {showPauseModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <motion.div 
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl relative"
-          >
-            <button 
-              onClick={() => setShowPauseModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <X size={20} />
-            </button>
-            <h3 className="text-xl font-serif font-bold mb-2">Pause Subscription</h3>
-            <p className="text-sm text-gray-500 mb-6">
-              Going out of town? You can pause your deliveries and resume them when you're back. 
-              The paused days will be extended on your current plan.
-            </p>
-            <form onSubmit={handlePauseSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Pause Start Date</label>
-                <input 
-                  type="date" 
-                  required
-                  min={new Date().toISOString().split('T')[0]}
-                  value={pauseData.startDate}
-                  onChange={e => setPauseData(p => ({ ...p, startDate: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/50"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Resume Date (Optional)</label>
-                <input 
-                  type="date" 
-                  min={pauseData.startDate || new Date().toISOString().split('T')[0]}
-                  value={pauseData.endDate}
-                  onChange={e => setPauseData(p => ({ ...p, endDate: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/50"
-                />
-                <p className="text-xs text-gray-400 mt-1">If left blank, you can manually resume later.</p>
-              </div>
-              <button 
-                type="submit" 
-                disabled={isPausingStatus || !pauseData.startDate}
-                className="w-full mt-2 bg-amber-500 text-white font-bold py-3 rounded-xl hover:bg-amber-600 transition-all disabled:opacity-50"
-              >
-                {isPausingStatus ? 'Pausing...' : 'Confirm Pause'}
-              </button>
-            </form>
-          </motion.div>
-        </div>
-      )}
     </div>
   );
 }
