@@ -50,8 +50,8 @@ export default function LoginPage({ onNavigate }: { onNavigate: (page: any) => v
           const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
           setGeneratedOTP(newOtp);
           await emailjs.send(
-            "service_default", // The user did not specify so we use placeholder, they will have to change it in their system
-            "template_default", 
+            "service_vkbkgck", // ⚠️ Please replace with your actual EmailJS Service ID
+            "template_clksozt", // ⚠️ Please replace with your actual EmailJS Template ID
             {
               email: email,
               otp: newOtp,
