@@ -263,6 +263,39 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
     }
   };
 
+  const handleCancelSubscription = async (index?: number) => {
+    if (!window.confirm("Are you sure you want to cancel your subscription? You will lose access immediately.")) return;
+    setIsPausingStatus(true);
+    const userStr = getActiveUserStr();
+    if (!userStr) return;
+    const { uid } = JSON.parse(userStr);
+
+    try {
+      const userRef = doc(db, 'users', uid);
+      let updatePayload: any = {};
+      let updatedUserData = { ...userData };
+
+      if (typeof index === 'number' && userData.subscriptions) {
+        const newSubscriptions = [...userData.subscriptions];
+        newSubscriptions.splice(index, 1);
+        updatePayload.subscriptions = newSubscriptions;
+        updatedUserData.subscriptions = newSubscriptions;
+      } else {
+        updatePayload.subscription = null;
+        updatedUserData.subscription = null;
+      }
+
+      await updateDoc(userRef, updatePayload);
+      setUserData(updatedUserData);
+      // Removed alert as per good UX, let UI update instantly or you can add hot-toast if needed
+    } catch (err) {
+      console.error(err);
+      alert('Could not cancel subscription');
+    } finally {
+      setIsPausingStatus(false);
+    }
+  };
+
   const handleReorder = () => {
     window.open(`https://wa.me/${BRAND_DATA.brand.whatsapp.replace(/[^0-9]/g, '')}?text=Hi,%20I'd%20like%20to%20reorder%20my%20last%20meal`, '_blank');
   };
@@ -456,6 +489,13 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
                           >
                             <PauseCircle size={16} /> Pause Subscription
                           </button>
+                          <button
+                            onClick={() => handleCancelSubscription(idx)}
+                            disabled={isPausingStatus}
+                            className="w-full py-2 border border-red-500 text-red-500 rounded-lg text-sm font-bold hover:bg-red-500 hover:text-white transition-colors flex items-center justify-center gap-2"
+                          >
+                            <X size={16} /> Cancel Subscription
+                          </button>
                         </>
                       )}
                     </div>
@@ -490,12 +530,21 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
                       </p>
                     )}
                     {(orders?.activePlan) && (
-                      <button
-                        onClick={() => setShowPauseModal(true)}
-                        className="w-full py-2 border border-brand-primary text-brand-primary rounded-lg text-sm font-bold hover:bg-brand-primary hover:text-white transition-colors flex items-center justify-center gap-2"
-                      >
-                        <PauseCircle size={16} /> Pause Subscription
-                      </button>
+                      <>
+                        <button
+                          onClick={() => setShowPauseModal(true)}
+                          className="w-full py-2 border border-brand-primary text-brand-primary rounded-lg text-sm font-bold hover:bg-brand-primary hover:text-white transition-colors flex items-center justify-center gap-2"
+                        >
+                          <PauseCircle size={16} /> Pause Subscription
+                        </button>
+                        <button
+                          onClick={() => handleCancelSubscription()}
+                          disabled={isPausingStatus}
+                          className="w-full py-2 border border-red-500 text-red-500 rounded-lg text-sm font-bold hover:bg-red-500 hover:text-white transition-colors flex items-center justify-center gap-2"
+                        >
+                          <X size={16} /> Cancel Subscription
+                        </button>
+                      </>
                     )}
                   </div>
                 )

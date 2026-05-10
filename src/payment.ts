@@ -42,103 +42,60 @@ export const startPayment = async (
         const { uid } = JSON.parse(userStr);
         const contact = JSON.parse(userStr).phoneOrEmail || "";
         const name = JSON.parse(userStr).name || "Customer";
-        const keyId = "rzp_live_SlcqfzS2rFe2iS";
+        const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_live_SlcqfzS2rFe2iS";
 
         const numericPrice = parseFloat(plan.monthly_price.toString().replace(/[^0-9.]/g, ''));
         if (isNaN(numericPrice) || numericPrice <= 0) {
             throw new Error('Invalid plan price');
         }
 
-        // --- STEP 1: ₹1 Verification ---
-        onProcessing('Initiating ₹1 Verification...');
-        
-        const verifyOrderResponse = await fetch('/api/create-order', {
+        // --- Actual Plan Payment ---
+        onProcessing('Initiating final payment...');
+        const actualOrderResponse = await fetch('/api/create-order', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({
-                amount: 100, // ₹1
+                amount: Math.round(numericPrice * 100),
                 currency: 'INR',
-                receipt: `receipt_verify_${uid}_${Date.now()}`,
-                notes: { userId: uid, planName: 'Verification' }
+                receipt: `receipt_plan_${plan.id}_${Date.now()}`,
+                notes: { userId: uid, planName: plan.name }
             })
         });
-        const verifyOrderData = await verifyOrderResponse.json();
-        if (!verifyOrderResponse.ok) throw new Error(verifyOrderData.error || 'Failed to create verification order');
+        const actualOrderData = await actualOrderResponse.json();
+        if (!actualOrderResponse.ok) throw new Error(actualOrderData.error || 'Failed to create final order');
 
-        const verifyOptions = {
+        const actualOptions = {
             key: keyId,
-            amount: 100,
+            amount: actualOrderData.amount,
             currency: 'INR',
-            name: "Ghar Ka Swaad (Verification)",
-            description: "₹1 Verification for Subscription",
-            order_id: verifyOrderData.id,
-            handler: async function (response: any) {
-                toast.success("Verification Successful! Now initiating actual payment...", { duration: 3000 });
-                
-                // --- STEP 2: Actual Plan Payment ---
+            name: "Ghar Ka Swaad",
+            description: `Subscription: ${plan.name}`,
+            order_id: actualOrderData.id,
+            handler: async function (finalResponse: any) {
                 try {
-                    onProcessing('Initiating final payment...');
-                    const actualOrderResponse = await fetch('/api/create-order', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                        body: JSON.stringify({
-                            amount: Math.round(numericPrice * 100),
-                            currency: 'INR',
-                            receipt: `receipt_plan_${plan.id}_${Date.now()}`,
-                            notes: { userId: uid, planName: plan.name }
-                        })
-                    });
-                    const actualOrderData = await actualOrderResponse.json();
-                    if (!actualOrderResponse.ok) throw new Error(actualOrderData.error || 'Failed to create final order');
-
-                    const actualOptions = {
-                        key: keyId,
-                        amount: actualOrderData.amount,
-                        currency: 'INR',
-                        name: "Ghar Ka Swaad",
-                        description: `Subscription: ${plan.name}`,
-                        order_id: actualOrderData.id,
-                        handler: async function (finalResponse: any) {
-                            try {
-                                onProcessing('Activating Subscription...');
-                                await verifyPayment(finalResponse, token, userStr, plan);
-                                toast.success('Payment Successful! Activating plan...', { duration: 4000 });
-                                onSuccess(finalResponse.razorpay_payment_id);
-                            } catch (err: any) {
-                                toast.error(`Verification Failed: ${err.message}`);
-                                onError(err);
-                            }
-                        },
-                        prefill: { name, contact },
-                        theme: { color: "#ff6c37" }
-                    };
-
-                    const rzpFinal = new (window as any).Razorpay(actualOptions);
-                    rzpFinal.on('payment.failed', function(res: any) {
-                        toast.error(`Actual Payment Failed: ${res?.error?.description}`);
-                        onError(new Error(`Payment Failed: ${res?.error?.description}`));
-                    });
-                    
-                    // Delay the second modal slightly so the first one completely closes
+                    onProcessing('Activating Subscription...');
+                    await verifyPayment(finalResponse, token, userStr, plan);
+                    toast.success('Payment Successful! Please share screenshot of this payment on our WhatsApp.', { duration: 6000, icon: '📱' });
+                    onSuccess(finalResponse.razorpay_payment_id);
                     setTimeout(() => {
-                        rzpFinal.open();
-                    }, 500);
-                } catch(actualErr: any) {
-                    toast.error(`Main Payment Failed: ${actualErr.message}`);
-                    onError(actualErr);
+                        window.open(`https://wa.me/918275116821?text=Hi, I subscribed to ${encodeURIComponent(plan.name)}. Payment ID: ${finalResponse.razorpay_payment_id}. Please find attached my screenshot.`, '_blank');
+                    }, 3000);
+                } catch (err: any) {
+                    toast.error(`Verification Failed: ${err.message}`);
+                    onError(err);
                 }
             },
             prefill: { name, contact },
             theme: { color: "#ff6c37" }
         };
 
-        const rzpVerify = new (window as any).Razorpay(verifyOptions);
-        rzpVerify.on('payment.failed', function (res: any) {
-            const errDesc = res?.error?.description || "Payment Failed";
-            toast.error(`Verification Failed: ${errDesc}`);
-            onError(new Error(`Verification Failed: ${errDesc}`));
+        const rzpFinal = new (window as any).Razorpay(actualOptions);
+        rzpFinal.on('payment.failed', function(res: any) {
+            toast.error(`Actual Payment Failed: ${res?.error?.description}`);
+            onError(new Error(`Payment Failed: ${res?.error?.description}`));
         });
-        rzpVerify.open();
+        
+        rzpFinal.open();
 
     } catch (error: any) {
         toast.error(error.message || "An error occurred");

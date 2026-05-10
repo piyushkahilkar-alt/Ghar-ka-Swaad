@@ -10,8 +10,22 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
   const [checkoutStep, setCheckoutStep] = useState(2); // Start directly at payment step
   const [isProcessingInfo, setIsProcessingInfo] = useState('');
 
-  const initiatePayment = async (plan: any) => {
+  const [customAmount, setCustomAmount] = useState<number | ''>('');
+
+  const initiatePayment = (plan: any) => {
     setSelectedPlan(plan);
+    setCustomAmount(parseInt(plan.monthly_price.toString().replace(/[^0-9]/g, ''), 10) || 0);
+    setCheckoutStep(1); // Proceed to amount adjustment step
+  };
+
+  const handleProceedToPayment = async () => {
+    if (!customAmount || customAmount <= 0) {
+        alert("Please enter a valid amount.");
+        return;
+    }
+
+    const planWithCustomAmount = { ...selectedPlan, monthly_price: customAmount };
+    
     setCheckoutStep(2); // Initial payment step (now starts Razorpay process)
 
     const userStr = localStorage.getItem('user');
@@ -24,7 +38,7 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
     }
 
     startPayment(
-        plan, 
+        planWithCustomAmount, 
         userStr, 
         token, 
         (status) => {
@@ -41,8 +55,8 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
             expiryDate.setDate(expiryDate.getDate() + 30);
             
             updatedUser.subscription = {
-                planId: plan.id.toString(),
-                planName: plan.name,
+                planId: planWithCustomAmount.id.toString(),
+                planName: planWithCustomAmount.name,
                 isPaused: false,
                 expiryDate: expiryDate.toISOString()
             };
@@ -60,8 +74,8 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
         (error) => {
             console.error('Payment Error:', error);
             alert(error.message);
-            setCheckoutStep(2); // Go back to default/failed state
-            setSelectedPlan(null);
+            setCheckoutStep(1); // Go back to default/failed state
+            // Keep selectedPlan so they can try again
         }
     );
   };
@@ -177,7 +191,31 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
                 <X size={18} />
               </button>
 
-              {checkoutStep === 2 ? (
+              {checkoutStep === 1 ? (
+                <div className="py-8 flex flex-col items-center justify-center text-center">
+                  <h3 className="text-2xl font-serif font-bold mb-2">Confirm Payment</h3>
+                  <p className="text-gray-500 mb-6">You selected <strong>{selectedPlan.name}</strong>.</p>
+                  
+                  <div className="w-full text-left mb-6">
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Adjust Amount (₹)</label>
+                    <input 
+                      type="number"
+                      value={customAmount}
+                      onChange={(e) => setCustomAmount(Number(e.target.value))}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all"
+                      placeholder="Enter amount"
+                    />
+                    <p className="text-xs text-gray-400 mt-2">Default amount is ₹{selectedPlan.monthly_price}</p>
+                  </div>
+
+                  <button 
+                    onClick={handleProceedToPayment}
+                    className="w-full py-4 rounded-2xl font-bold bg-brand-primary text-white transition-all hover:bg-brand-dark hover:scale-105 active:scale-95"
+                  >
+                    Proceed to Pay ₹{customAmount}
+                  </button>
+                </div>
+              ) : checkoutStep === 2 ? (
                 <div className="py-12 flex flex-col items-center justify-center text-center">
                   <div className="w-20 h-20 bg-brand-primary/10 text-brand-primary rounded-full flex items-center justify-center mb-6">
                      <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-8 h-8 border-4 border-brand-primary border-t-transparent rounded-full" />

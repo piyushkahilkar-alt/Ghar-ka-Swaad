@@ -441,8 +441,8 @@ app.post('/api/create-order', authenticateToken, async (req: any, res: any) => {
     const finalAmount = amount || 100;
 
     const razorpayLive = new Razorpay({
-      key_id: "rzp_live_SlcqfzS2rFe2iS",
-      key_secret: "GhpYwVYB7YKm1x1rIdimtyOZ",
+      key_id: process.env.RAZORPAY_KEY_ID || 'rzp_live_SlcqfzS2rFe2iS',
+      key_secret: process.env.RAZORPAY_KEY_SECRET || 'GhpYwVYB7YKm1x1rIdimtyOZ',
     });
 
     const options = {
@@ -486,7 +486,7 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
       return res.status(400).json({ error: 'Missing payment verification fields' });
     }
 
-    const secret = "GhpYwVYB7YKm1x1rIdimtyOZ";
+    const secret = process.env.RAZORPAY_KEY_SECRET || 'GhpYwVYB7YKm1x1rIdimtyOZ';
     if (!secret) throw new Error('Razorpay secret not configured');
 
     const generatedSignature = crypto
@@ -614,7 +614,7 @@ app.get('/api/orders', authenticateToken, async (req: any, res: any) => {
 // Razorpay Webhook Endpoint
 app.post('/api/webhook', async (req, res) => {
   try {
-    const webhookSecret = "GhpYwVYB7YKm1x1rIdimtyOZ";
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET || 'GhpYwVYB7YKm1x1rIdimtyOZ';
     const signature = req.headers['x-razorpay-signature'];
     
     // Verify Webhook Signature if secret and signature are present
