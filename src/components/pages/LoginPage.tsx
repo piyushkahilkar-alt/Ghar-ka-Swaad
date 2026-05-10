@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { BRAND_DATA } from '../../constants';
-import { loginUser, signInWithGoogle, loginWithEmailOTP, requestEmailOTP, verifyEmailOTPFromFirestore } from '../../firebase';
+import { loginUser, signInWithGoogle, loginWithEmailOTP, requestEmailOTP, verifyEmailOTPFromFirestore, sendEmailOTP } from '../../firebase';
 import emailjs from '@emailjs/browser';
 
 export default function LoginPage({ onNavigate }: { onNavigate: (page: any) => void }) {
@@ -14,6 +14,7 @@ export default function LoginPage({ onNavigate }: { onNavigate: (page: any) => v
   
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -48,22 +49,15 @@ export default function LoginPage({ onNavigate }: { onNavigate: (page: any) => v
         setLoading(true);
         try {
           const newOtp = await requestEmailOTP(email);
-          emailjs.send(
-            "service_vkbkgck", // ⚠️ Please replace with your actual EmailJS Service ID
-            "template_clksozt", // ⚠️ Please replace with your actual EmailJS Template ID
-            {
-              email: email,
-              otp: newOtp,
-            },
-            "nTUZKHUOCZ3MpdmFQ"
-          ).catch((err) => console.error("EmailJS background send error:", err));
+          sendEmailOTP(email, newOtp).catch(err => console.error(err));
           
           setOtpSent(true);
           setError('');
-          alert("OTP Sent Successfully");
+          setSuccess('OTP successfully sent to your email. Please check your inbox.');
+          setTimeout(() => setSuccess(''), 3000);
         } catch (err: any) {
-          console.error("EmailJS Error:", err);
-          setError('Failed to send OTP to email: ' + (err.text || err.message || JSON.stringify(err)));
+          console.error("OTP Error:", err);
+          setError('Failed to send OTP: ' + (err.message || JSON.stringify(err)));
         } finally {
           setLoading(false);
         }
@@ -74,13 +68,13 @@ export default function LoginPage({ onNavigate }: { onNavigate: (page: any) => v
         }
         
         setLoading(true);
+        setSuccess('');
         try {
           const { user, userData } = await verifyEmailOTPFromFirestore(email, otp);
           processLoginSuccess(user, userData);
         } catch (err: any) {
           console.error(err);
           setError(err.message || 'Failed to authenticate with Firebase after OTP matched.');
-          alert(err.message || "Invalid OTP");
         } finally {
           setLoading(false);
         }
@@ -154,6 +148,12 @@ export default function LoginPage({ onNavigate }: { onNavigate: (page: any) => v
           </div>
         )}
 
+        {success && (
+          <div className="bg-green-50 text-green-600 p-4 rounded-xl text-sm mb-6 border border-green-100 font-medium whitespace-pre-wrap">
+            {success}
+          </div>
+        )}
+
         <form onSubmit={handleLogin} className="space-y-6">
             {loginMethod === 'email' ? (
               <>
@@ -215,16 +215,12 @@ export default function LoginPage({ onNavigate }: { onNavigate: (page: any) => v
                            setLoading(true);
                            try {
                              const newOtp = await requestEmailOTP(email);
-                             emailjs.send(
-                               "service_vkbkgck",
-                               "template_clksozt",
-                               { email, otp: newOtp },
-                               "nTUZKHUOCZ3MpdmFQ"
-                             ).catch((err) => console.error("EmailJS background resend error:", err));
+                             sendEmailOTP(email, newOtp).catch(console.error);
                              
-                             alert("New OTP request sent via Email");
+                             setSuccess("New OTP request sent via Email");
+                             setTimeout(() => setSuccess(''), 3000);
                            } catch (err: any) {
-                             alert("Failed to resend OTP: " + (err.text || err.message || JSON.stringify(err)));
+                             setError("Failed to resend OTP: " + (err.message || JSON.stringify(err)));
                            } finally {
                              setLoading(false);
                            }

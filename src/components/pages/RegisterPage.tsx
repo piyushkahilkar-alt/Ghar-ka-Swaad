@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { BRAND_DATA } from '../../constants';
 import { MapPin } from 'lucide-react';
-import { signupUser, signInWithGoogle, requestEmailOTP, verifyEmailOTPFromFirestore } from '../../firebase';
+import { signupUser, signInWithGoogle, requestEmailOTP, verifyEmailOTPFromFirestore, sendEmailOTP } from '../../firebase';
 import { handleFirestoreError, OperationType } from '../../utils/firestoreError';
 import emailjs from '@emailjs/browser';
 
@@ -83,12 +83,7 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
       setLoading(true);
       try {
         const newOtp = await requestEmailOTP(email);
-        emailjs.send(
-          "service_vkbkgck", // Fixed Service ID 
-          "template_clksozt", // Fixed Template ID
-          { email, otp: newOtp },
-          "nTUZKHUOCZ3MpdmFQ" // Public key provided by user
-        ).catch((err) => console.error("EmailJS background send error:", err));
+        sendEmailOTP(email, newOtp).catch(console.error);
         
         setOtpSent(true);
         setSuccess('OTP sent to your email. Please check your inbox.');
@@ -344,15 +339,11 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
                        setLoading(true);
                        try {
                          const newOtp = await requestEmailOTP(email);
-                         emailjs.send(
-                           "service_vkbkgck",
-                           "template_clksozt",
-                           { email, otp: newOtp },
-                           "nTUZKHUOCZ3MpdmFQ"
-                         ).catch((err) => console.error("EmailJS background resend error:", err));
-                         alert("New OTP request sent via Email");
+                         sendEmailOTP(email, newOtp).catch(console.error);
+                         setSuccess("New OTP request sent via Email");
+                         setTimeout(() => setSuccess(''), 3000);
                        } catch (err: any) {
-                         alert("Failed to resend OTP: " + (err.text || err.message || JSON.stringify(err)));
+                         setError("Failed to resend OTP: " + (err.message || JSON.stringify(err)));
                        } finally {
                          setLoading(false);
                        }

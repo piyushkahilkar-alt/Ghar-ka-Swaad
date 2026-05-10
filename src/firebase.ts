@@ -1,22 +1,11 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, setPersistence, browserLocalPersistence, browserSessionPersistence, GoogleAuthProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, ApplicationVerifier } from 'firebase/auth';
-import { initializeFirestore, doc, setDoc, getDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCzGce1RgiLVhMnplr-xP-W2ts6FWmVobU",
-  authDomain: "gharkaswadd-2b9ab.firebaseapp.com",
-  projectId: "gharkaswadd-2b9ab",
-  storageBucket: "gharkaswadd-2b9ab.firebasestorage.app",
-  messagingSenderId: "1096066518004",
-  appId: "1:1096066518004:web:ea4f0d4c0c46639f9207a1",
-  measurementId: "G-3B26ZTW023"
-};
+import { getFirestore, doc, setDoc, getDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import firebaseConfig from '../firebase-applet-config.json';
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true
-});
+export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 
 // Modular functions for Authentication and Database
 
@@ -82,10 +71,20 @@ export const loginWithEmailOTP = async (email: string) => {
     return { user: result.user, userData: userDoc.exists() ? userDoc.data() : { email: result.user.email } };
   } catch (error: any) {
     if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-      const result = await createUserWithEmailAndPassword(auth, email, dummyPassword);
-      const userData = { email: result.user.email, name: 'Customer' };
-      await saveUserData(result.user.uid, userData);
-      return { user: result.user, userData, isNewUser: true };
+      try {
+        const result = await createUserWithEmailAndPassword(auth, email, dummyPassword);
+        const userData = { email: result.user.email, name: 'Customer' };
+        await saveUserData(result.user.uid, userData);
+        return { user: result.user, userData, isNewUser: true };
+      } catch (innerError: any) {
+        if (innerError.code === 'auth/operation-not-allowed') {
+           throw new Error("Email/Password Authentication is not enabled. Please enable it in the Firebase Console -> Authentication -> Sign-in methods.");
+        }
+        throw innerError;
+      }
+    }
+    if (error.code === 'auth/operation-not-allowed') {
+      throw new Error("Email/Password Authentication is not enabled. Please enable it in the Firebase Console -> Authentication -> Sign-in methods.");
     }
     throw error;
   }
@@ -107,11 +106,38 @@ export const verifyOtpPhone = async (confirmationResult: any, otp: string) => {
 
 export const requestEmailOTP = async (email: string) => {
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  
   await setDoc(doc(db, "otps", email.toLowerCase()), {
     otp,
     expiresAt: Date.now() + 5 * 60 * 1000 // 5 minutes
   });
+  
   return otp;
+}
+
+export const sendEmailOTP = async (email: string, otp: string) => {
+  const data = {
+    service_id: "service_vkbkgck",
+    template_id: "template_clksozt",
+    user_id: "nTUZKHUOCZ3MpdmFQ",
+    template_params: {
+      email: email,
+      otp: otp
+    }
+  };
+
+  const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`EmailJS failed: ${errorText}`);
+  }
 }
 
 export const verifyEmailOTPFromFirestore = async (email: string, otp: string) => {
