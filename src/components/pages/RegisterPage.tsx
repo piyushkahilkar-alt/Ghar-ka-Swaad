@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { BRAND_DATA } from '../../constants';
 import { MapPin } from 'lucide-react';
-import { signupUser, signInWithGoogle } from '../../firebase';
+import { signupUser, signInWithGoogle, requestEmailOTP, verifyEmailOTPFromFirestore } from '../../firebase';
 import { handleFirestoreError, OperationType } from '../../utils/firestoreError';
+import emailjs from '@emailjs/browser';
 
 export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) => void }) {
   const [name, setName] = useState('');
@@ -16,6 +17,9 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
   const [mapLink, setMapLink] = useState('');
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
+
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState('');
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -75,9 +79,39 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
       return;
     }
 
-    setLoading(true);
+    if (!otpSent) {
+      setLoading(true);
+      try {
+        const newOtp = await requestEmailOTP(email);
+        emailjs.send(
+          "service_vkbkgck", // Fixed Service ID 
+          "template_clksozt", // Fixed Template ID
+          { email, otp: newOtp },
+          "nTUZKHUOCZ3MpdmFQ" // Public key provided by user
+        ).catch((err) => console.error("EmailJS background send error:", err));
+        
+        setOtpSent(true);
+        setSuccess('OTP sent to your email. Please check your inbox.');
+        setTimeout(() => setSuccess(''), 3000);
+      } catch (err: any) {
+        console.error("EmailJS Error:", err);
+        setError('Failed to send OTP: ' + (err.text || err.message || JSON.stringify(err)));
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
 
+    if (!otp || otp.length < 6) {
+        setError("Please provide the 6-digit OTP");
+        return;
+    }
+
+    setLoading(true);
     try {
+      // Very OTP from Firestore
+      await verifyEmailOTPFromFirestore(email, otp);
+
       // Fast, database-once approach using modular function
       const userDataToSave = {
         name,
@@ -290,12 +324,53 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
               </div>
             </div>
 
+            {otpSent && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Enter OTP</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 transition-all shadow-sm text-center tracking-widest text-lg font-bold text-gray-900"
+                  placeholder="------"
+                  maxLength={6}
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                />
+                <div className="flex justify-end mt-2">
+                   <button
+                     type="button"
+                     disabled={loading}
+                     onClick={async () => {
+                       setLoading(true);
+                       try {
+                         const newOtp = await requestEmailOTP(email);
+                         emailjs.send(
+                           "service_vkbkgck",
+                           "template_clksozt",
+                           { email, otp: newOtp },
+                           "nTUZKHUOCZ3MpdmFQ"
+                         ).catch((err) => console.error("EmailJS background resend error:", err));
+                         alert("New OTP request sent via Email");
+                       } catch (err: any) {
+                         alert("Failed to resend OTP: " + (err.text || err.message || JSON.stringify(err)));
+                       } finally {
+                         setLoading(false);
+                       }
+                     }}
+                     className="text-xs font-bold text-brand-primary hover:text-brand-dark transition-colors"
+                   >
+                     Resend OTP
+                   </button>
+                </div>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={loading || !!success}
               className="w-full bg-brand-primary text-white font-bold py-3.5 rounded-xl hover:bg-brand-dark shadow-lg hover:shadow-xl transition-all disabled:opacity-70 mt-6 active:scale-[0.98]"
             >
-              {loading ? 'Creating Account...' : 'Create Account'}
+              {loading ? 'Please wait...' : (!otpSent ? 'Send OTP' : 'Verify & Create Account')}
             </button>
           </form>
 

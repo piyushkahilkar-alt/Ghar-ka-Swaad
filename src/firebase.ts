@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, setPersistence, browserLocalPersistence, browserSessionPersistence, GoogleAuthProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, ApplicationVerifier } from 'firebase/auth';
-import { initializeFirestore, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { initializeFirestore, doc, setDoc, getDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCzGce1RgiLVhMnplr-xP-W2ts6FWmVobU",
@@ -104,3 +104,33 @@ export const verifyOtpPhone = async (confirmationResult: any, otp: string) => {
   
   return { user: result.user, userData: userDoc.data(), isNewUser: false };
 };
+
+export const requestEmailOTP = async (email: string) => {
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  await setDoc(doc(db, "otps", email.toLowerCase()), {
+    otp,
+    expiresAt: Date.now() + 5 * 60 * 1000 // 5 minutes
+  });
+  return otp;
+}
+
+export const verifyEmailOTPFromFirestore = async (email: string, otp: string) => {
+  const otpRef = doc(db, "otps", email.toLowerCase());
+  const otpDoc = await getDoc(otpRef);
+  if (!otpDoc.exists()) {
+    throw new Error("OTP not found. Please request a new one.");
+  }
+  
+  const data = otpDoc.data();
+  if (Date.now() > data.expiresAt) {
+    await deleteDoc(otpRef);
+    throw new Error("OTP has expired.");
+  }
+
+  if (data.otp !== otp) {
+    throw new Error("Invalid OTP");
+  }
+  
+  await deleteDoc(otpRef);
+  return loginWithEmailOTP(email);
+}

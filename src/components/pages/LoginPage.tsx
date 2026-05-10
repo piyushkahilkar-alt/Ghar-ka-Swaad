@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { BRAND_DATA } from '../../constants';
-import { loginUser, signInWithGoogle, loginWithEmailOTP } from '../../firebase';
+import { loginUser, signInWithGoogle, loginWithEmailOTP, requestEmailOTP, verifyEmailOTPFromFirestore } from '../../firebase';
 import emailjs from '@emailjs/browser';
 
 export default function LoginPage({ onNavigate }: { onNavigate: (page: any) => void }) {
@@ -47,9 +47,8 @@ export default function LoginPage({ onNavigate }: { onNavigate: (page: any) => v
         }
         setLoading(true);
         try {
-          const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
-          setGeneratedOTP(newOtp);
-          await emailjs.send(
+          const newOtp = await requestEmailOTP(email);
+          emailjs.send(
             "service_vkbkgck", // ⚠️ Please replace with your actual EmailJS Service ID
             "template_clksozt", // ⚠️ Please replace with your actual EmailJS Template ID
             {
@@ -57,13 +56,14 @@ export default function LoginPage({ onNavigate }: { onNavigate: (page: any) => v
               otp: newOtp,
             },
             "nTUZKHUOCZ3MpdmFQ"
-          );
+          ).catch((err) => console.error("EmailJS background send error:", err));
+          
           setOtpSent(true);
           setError('');
           alert("OTP Sent Successfully");
         } catch (err: any) {
-          console.error(err);
-          setError(err.message || 'Failed to send OTP to email.');
+          console.error("EmailJS Error:", err);
+          setError('Failed to send OTP to email: ' + (err.text || err.message || JSON.stringify(err)));
         } finally {
           setLoading(false);
         }
@@ -72,20 +72,17 @@ export default function LoginPage({ onNavigate }: { onNavigate: (page: any) => v
           setError('Please enter a valid 6-digit OTP.');
           return;
         }
-        if (otp === generatedOTP) {
-            setLoading(true);
-            try {
-              const { user, userData } = await loginWithEmailOTP(email);
-              processLoginSuccess(user, userData);
-            } catch (err: any) {
-              console.error(err);
-              setError('Failed to authenticate with Firebase after OTP matched.');
-            } finally {
-              setLoading(false);
-            }
-        } else {
-            setError('Invalid OTP');
-            alert("Invalid OTP");
+        
+        setLoading(true);
+        try {
+          const { user, userData } = await verifyEmailOTPFromFirestore(email, otp);
+          processLoginSuccess(user, userData);
+        } catch (err: any) {
+          console.error(err);
+          setError(err.message || 'Failed to authenticate with Firebase after OTP matched.');
+          alert(err.message || "Invalid OTP");
+        } finally {
+          setLoading(false);
         }
       }
     }
@@ -210,6 +207,33 @@ export default function LoginPage({ onNavigate }: { onNavigate: (page: any) => v
                       value={otp}
                       onChange={(e) => setOtp(e.target.value)}
                     />
+                    <div className="flex justify-end mt-2">
+                       <button
+                         type="button"
+                         disabled={loading}
+                         onClick={async () => {
+                           setLoading(true);
+                           try {
+                             const newOtp = await requestEmailOTP(email);
+                             emailjs.send(
+                               "service_vkbkgck",
+                               "template_clksozt",
+                               { email, otp: newOtp },
+                               "nTUZKHUOCZ3MpdmFQ"
+                             ).catch((err) => console.error("EmailJS background resend error:", err));
+                             
+                             alert("New OTP request sent via Email");
+                           } catch (err: any) {
+                             alert("Failed to resend OTP: " + (err.text || err.message || JSON.stringify(err)));
+                           } finally {
+                             setLoading(false);
+                           }
+                         }}
+                         className="text-xs font-bold text-brand-primary hover:text-brand-dark transition-colors"
+                       >
+                         Resend OTP
+                       </button>
+                    </div>
                   </div>
                 )}
               </>
