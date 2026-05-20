@@ -70,7 +70,8 @@ export default function LoginPage({ onNavigate }: { onNavigate: (page: any) => v
         setLoading(true);
         setSuccess('');
         try {
-          const { user, userData } = await verifyEmailOTPFromFirestore(email, otp);
+          await verifyEmailOTPFromFirestore(email, otp);
+          const { user, userData } = await loginWithEmailOTP(email);
           processLoginSuccess(user, userData);
         } catch (err: any) {
           console.error(err);
