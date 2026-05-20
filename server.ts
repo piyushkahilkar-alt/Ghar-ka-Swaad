@@ -614,7 +614,7 @@ app.get('/api/orders', authenticateToken, async (req: any, res: any) => {
 // Razorpay Webhook Endpoint
 app.post('/api/webhook', async (req, res) => {
   try {
-    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET || 'GhpYwVYB7YKm1x1rIdimtyOZ';
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET || 'lFnUSnzslAVphyKOYjXHdZZF';
     const signature = req.headers['x-razorpay-signature'];
     
     // Verify Webhook Signature if secret and signature are present

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { BRAND_DATA } from '../../constants';
 import { MapPin } from 'lucide-react';
-import { signupUser, signInWithGoogle, requestEmailOTP, verifyEmailOTPFromFirestore, sendEmailOTP } from '../../firebase';
+import { signupUser, loginUser, signInWithGoogle, requestEmailOTP, verifyEmailOTPFromFirestore, sendEmailOTP } from '../../firebase';
 import { handleFirestoreError, OperationType } from '../../utils/firestoreError';
 import emailjs from '@emailjs/browser';
 
@@ -135,7 +135,18 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
     } catch (err: any) {
       console.error(err);
       if (err.code === 'auth/email-already-in-use') {
-        setError('This email is already registered. Please login instead.');
+        try {
+          const { user: loggedInUser, userData } = await loginUser(email, password);
+          const dummyToken = `dummy-token-${loggedInUser.uid}`;
+          localStorage.setItem('token', dummyToken);
+          localStorage.setItem('user', JSON.stringify({ uid: loggedInUser.uid, email, ...userData }));
+          setSuccess('Account already exists. Logged you in securely!');
+          setTimeout(() => {
+            onNavigate('dashboard');
+          }, 800);
+        } catch(loginErr: any) {
+          setError("Email already in use, but password doesn't match to login automatically. Please go to Login page.");
+        }
       } else {
         setError(err.message || 'Registration failed');
       }
