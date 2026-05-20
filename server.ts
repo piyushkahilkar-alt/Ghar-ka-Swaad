@@ -52,8 +52,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_change_in_prod
 let razorpay: any;
 // Override with user's explicitly provided test keys to fix "Authentication failed" error
 razorpay = new Razorpay({
-  key_id: "rzp_test_SlJrq5daKnq9o0",
-  key_secret: "lFnUSnzslAVphyKOYjXHdZZF",
+  key_id: process.env.RAZORPAY_KEY_ID || "rzp_live_SrinTcG5VIMRKW",
+  key_secret: process.env.RAZORPAY_KEY_SECRET || "rzp_live_SrinTcG5VIMRKW",
 });
 
 const FAKE_DB: { users: any[] } = { users: [] };
@@ -441,8 +441,8 @@ app.post('/api/create-order', authenticateToken, async (req: any, res: any) => {
     const finalAmount = amount || 100;
 
     const razorpayLive = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_SlJrq5daKnq9o0',
-      key_secret: process.env.RAZORPAY_KEY_SECRET || 'lFnUSnzslAVphyKOYjXHdZZF',
+      key_id: process.env.RAZORPAY_KEY_ID || 'rzp_live_SrinTcG5VIMRKW',
+      key_secret: process.env.RAZORPAY_KEY_SECRET || 'rzp_live_SrinTcG5VIMRKW',
     });
 
     const options = {
@@ -486,7 +486,7 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
       return res.status(400).json({ error: 'Missing payment verification fields' });
     }
 
-    const secret = process.env.RAZORPAY_KEY_SECRET || 'lFnUSnzslAVphyKOYjXHdZZF';
+    const secret = process.env.RAZORPAY_KEY_SECRET || 'rzp_live_SrinTcG5VIMRKW';
     if (!secret) throw new Error('Razorpay secret not configured');
 
     const generatedSignature = crypto
@@ -614,7 +614,7 @@ app.get('/api/orders', authenticateToken, async (req: any, res: any) => {
 // Razorpay Webhook Endpoint
 app.post('/api/webhook', async (req, res) => {
   try {
-    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET || 'lFnUSnzslAVphyKOYjXHdZZF';
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET || 'rzp_live_SrinTcG5VIMRKW';
     const signature = req.headers['x-razorpay-signature'];
     
     // Verify Webhook Signature if secret and signature are present

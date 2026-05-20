@@ -42,7 +42,7 @@ export const startPayment = async (
         const { uid } = JSON.parse(userStr);
         const contact = JSON.parse(userStr).phoneOrEmail || "";
         const name = JSON.parse(userStr).name || "Customer";
-        const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_SlJrq5daKnq9o0";
+        const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_live_SrinTcG5VIMRKW";
 
         const numericPrice = parseFloat(plan.monthly_price.toString().replace(/[^0-9.]/g, ''));
         if (isNaN(numericPrice) || numericPrice <= 0) {
