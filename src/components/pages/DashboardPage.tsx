@@ -113,7 +113,11 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
               const q = query(paymentsRef, where("userId", "==", uid));
               const paymentsSnapshot = await getDocs(q);
               const paymentsList = paymentsSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-              paymentsList.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+              paymentsList.sort((a: any, b: any) => {
+                  const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+                  const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+                  return timeB - timeA;
+              });
               setPaymentHistory(paymentsList);
           } catch(paymentErr) {
               console.error("Error fetching payments", paymentErr);

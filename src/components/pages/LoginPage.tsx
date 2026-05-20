@@ -75,7 +75,11 @@ export default function LoginPage({ onNavigate }: { onNavigate: (page: any) => v
           processLoginSuccess(user, userData);
         } catch (err: any) {
           console.error(err);
-          setError(err.message || 'Failed to authenticate with Firebase after OTP matched.');
+          if (err.code === 'auth/email-already-in-use') {
+             setError("This email is registered with a password. Please switch to the 'Email & Password' tab to login.");
+          } else {
+             setError(err.message || 'Failed to authenticate with Firebase after OTP matched.');
+          }
         } finally {
           setLoading(false);
         }
