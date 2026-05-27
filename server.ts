@@ -604,7 +604,9 @@ app.get('/api/track-order/:phone', async (req: any, res: any) => {
                  } else if (userData.subscription && userData.subscription.planName) {
                      plans = [userData.subscription];
                  }
-                 return res.json({ success: true, plans, location: { address: userData.address, latitude: userData.latitude, longitude: userData.longitude }});
+                 if (plans.length > 0) {
+                     return res.json({ success: true, plans, location: { address: userData.address, latitude: userData.latitude, longitude: userData.longitude }});
+                 }
              }
         } catch (e) {
             console.log("Firestore query failed for tracking:", e);
@@ -616,7 +618,10 @@ app.get('/api/track-order/:phone', async (req: any, res: any) => {
         let plans: any[] = [];
         if (user.subscriptions && user.subscriptions.length > 0) plans = user.subscriptions;
         else if (user.subscription && user.subscription.planName) plans = [user.subscription];
-        return res.json({ success: true, plans, location: { address: user.address, latitude: user.latitude, longitude: user.longitude }});
+        
+        if (plans.length > 0) {
+            return res.json({ success: true, plans, location: { address: user.address, latitude: user.latitude, longitude: user.longitude }});
+        }
     }
   
     return res.status(404).json({ error: "No active plans found for this number." });

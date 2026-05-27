@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { collection, addDoc, doc, updateDoc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, setDoc, arrayUnion } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 
 export const verifyPayment = async (response: any, token: string, userStr: string, plan: any) => {
@@ -25,6 +25,41 @@ export const verifyPayment = async (response: any, token: string, userStr: strin
     
     if (!verifyResponse.ok) {
          throw new Error(verifyData.error || 'Payment verification failed');
+    }
+    
+    // Fallback: If verification succeeded but backend couldn't update Firestore (due to Vercel env constraints),
+    // update Firestore securely from the frontend.
+    try {
+        const renewal = new Date();
+        renewal.setDate(renewal.getDate() + 30);
+        const newSubInfo = {
+            status: 'active',
+            planName: plan.name || "Unknown Plan",
+            planId: plan.id ? plan.id.toString() : "",
+            isPaused: false,
+            startDate: new Date().toISOString(),
+            renewalDate: renewal.toISOString(),
+            expiryDate: renewal.toISOString(),
+            paymentId: response.razorpay_payment_id
+        };
+        
+        await setDoc(doc(db, "users", uid), {
+            subscription: newSubInfo,
+            subscriptions: arrayUnion(newSubInfo)
+        }, { merge: true });
+        
+        const numericAmount = parseFloat((plan.monthly_price || "0").toString().replace(/[^0-9.]/g, ''));
+        await setDoc(doc(db, "payments", response.razorpay_payment_id), {
+            paymentId: response.razorpay_payment_id,
+            orderId: response.razorpay_order_id,
+            userId: uid,
+            amount: numericAmount,
+            status: "success",
+            plan: plan.name || "Unknown Plan",
+            createdAt: new Date().toISOString()
+        }, { merge: true });
+    } catch (dbErr) {
+        console.error("Frontend Firestore fast-save fallback failed:", dbErr);
     }
     
     return verifyData;
