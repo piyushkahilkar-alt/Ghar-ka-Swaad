@@ -42,7 +42,8 @@ export const startPayment = async (
         const { uid } = JSON.parse(userStr);
         const contact = JSON.parse(userStr).phoneOrEmail || "";
         const name = JSON.parse(userStr).name || "Customer";
-        const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_live_SuJKak8lep7KID";
+        // Override env variables with provided valid keys to prevent Vercel caching old keys
+        const keyId = "rzp_live_SuJKak8lep7KID";
 
         const numericPrice = parseFloat(plan.monthly_price.toString().replace(/[^0-9.]/g, ''));
         if (isNaN(numericPrice) || numericPrice <= 0) {

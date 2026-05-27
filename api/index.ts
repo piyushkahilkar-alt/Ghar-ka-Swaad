@@ -383,9 +383,11 @@ app.post('/api/create-order', authenticateToken, async (req: any, res: any) => {
     const finalAmount = amount || 100; // Use actual amount or fallback to 1 INR
 
     const razorpayLive = new Razorpay({
-      key_id: "rzp_test_SlJrq5daKnq9o0",
-      key_secret: "lFnUSnzslAVphyKOYjXHdZZF",
+      key_id: "rzp_live_SuJKak8lep7KID",
+      key_secret: "pXmA9tDdGrz8gt6MZDdo0STs",
     });
+
+    console.log(`[Checkout process] Creating Razorpay order for amount: ${finalAmount}`);
 
     const options = {
       amount: finalAmount,
@@ -395,6 +397,7 @@ app.post('/api/create-order', authenticateToken, async (req: any, res: any) => {
     };
 
     const order = await razorpayLive.orders.create(options);
+    console.log(`[Checkout process] Successfully created order: ${order.id}`);
     
     // Save pending order
     if (adminDb && req.body.notes?.userId) {
@@ -411,21 +414,22 @@ app.post('/api/create-order', authenticateToken, async (req: any, res: any) => {
     }
     
     res.json(order);
-  } catch (error) {
-    console.error('Razorpay create order error:', error);
-    res.status(500).json({ error: 'Failed to create order' });
+  } catch (error: any) {
+    console.error('Razorpay create order error detail:', error.message || error);
+    res.status(500).json({ error: 'Failed to create order', details: error.message });
   }
 });
 
 app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) => {
   try {
+    console.log(`[Verify Payment] Received verification request for order: ${req.body.razorpay_order_id}`);
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, userId, planName, amount, planId } = req.body;
 
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return res.status(400).json({ error: 'Missing payment verification fields' });
     }
 
-    const secret = "lFnUSnzslAVphyKOYjXHdZZF";
+    const secret = "pXmA9tDdGrz8gt6MZDdo0STs";
     if (!secret) throw new Error('Razorpay secret not configured');
 
     const generatedSignature = crypto
@@ -434,8 +438,11 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
       .digest('hex');
 
     if (generatedSignature !== razorpay_signature) {
+      console.error(`[Verify Payment] Signature mismatch for order: ${razorpay_order_id}`);
       return res.status(400).json({ error: 'Signature mismatch. Payment verification failed.' });
     }
+    
+    console.log(`[Verify Payment] Signature matched for order: ${razorpay_order_id}. Capturing successful payment.`);
 
     const numericAmount = parseFloat((amount || "0").toString().replace(/[^0-9.]/g, ''));
     if (adminDb && userId) {
@@ -513,16 +520,16 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
     } catch (e) {}
 
     res.json({ success: true, message: 'Payment verified successfully.' });
-  } catch (error) {
-    console.error('Razorpay verify payment error:', error);
-    res.status(500).json({ error: 'Failed to verify payment' });
+  } catch (error: any) {
+    console.error('Razorpay verify payment error detail:', error.message || error);
+    res.status(500).json({ error: 'Failed to verify payment', details: error.message });
   }
 });
 
 // Razorpay Webhook Endpoint
 app.post('/api/webhook', async (req, res) => {
   try {
-    const webhookSecret = "lFnUSnzslAVphyKOYjXHdZZF";
+    const webhookSecret = "pXmA9tDdGrz8gt6MZDdo0STs";
     const signature = req.headers['x-razorpay-signature'];
     
     if (webhookSecret && signature && (req as any).rawBody) {
