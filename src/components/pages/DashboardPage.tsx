@@ -76,10 +76,25 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
         // 2. Fetch fresh data quietly in background
         let freshUser: any = null;
         try {
+          // If we have a local token, try backend first
+          const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+          if (token) {
+              const res = await fetch('/api/profile', {
+                 headers: { 'Authorization': `Bearer ${token}` }
+              });
+              if (res.ok) {
+                 freshUser = Object.assign({}, freshUser, await res.json());
+              }
+          }
+        } catch (e) {
+             console.error("Backend fetch error", e);
+        }
+
+        try {
           const userRef = doc(db, 'users', uid);
           const userDoc = await getDoc(userRef);
           if (userDoc.exists()) {
-            freshUser = userDoc.data();
+            freshUser = Object.assign({}, freshUser, userDoc.data());
           }
         } catch (dbErr: any) {
           console.warn("Could not fetch latest user data from DB, using cached auth data", dbErr);

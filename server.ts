@@ -588,6 +588,43 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
 });
 
 // 4. User Orders (Dummy Data)
+app.get('/api/track-order/:phone', async (req: any, res: any) => {
+  try {
+    const phone = req.params.phone;
+    if (!phone) return res.status(400).json({ error: "Phone number required" });
+    
+    if (adminDb) {
+        try {
+             const querySnapshot = await adminDb.collection("users").where("phoneOrEmail", "==", phone).get();
+             if (!querySnapshot.empty) {
+                 const userData = querySnapshot.docs[0].data();
+                 let plans: any[] = [];
+                 if (userData.subscriptions && userData.subscriptions.length > 0) {
+                     plans = userData.subscriptions;
+                 } else if (userData.subscription && userData.subscription.planName) {
+                     plans = [userData.subscription];
+                 }
+                 return res.json({ success: true, plans, location: { address: userData.address, latitude: userData.latitude, longitude: userData.longitude }});
+             }
+        } catch (e) {
+            console.log("Firestore query failed for tracking:", e);
+        }
+    }
+  
+    const user = await User.findOne({ phoneOrEmail: phone });
+    if (user) {
+        let plans: any[] = [];
+        if (user.subscriptions && user.subscriptions.length > 0) plans = user.subscriptions;
+        else if (user.subscription && user.subscription.planName) plans = [user.subscription];
+        return res.json({ success: true, plans, location: { address: user.address, latitude: user.latitude, longitude: user.longitude }});
+    }
+  
+    return res.status(404).json({ error: "No active plans found for this number." });
+  } catch (error) {
+    res.status(500).json({ error: "Server error tracking order." });
+  }
+});
+
 app.get('/api/orders', authenticateToken, async (req: any, res: any) => {
   try {
     const user = await User.findById(req.user.id);
