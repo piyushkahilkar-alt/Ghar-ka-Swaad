@@ -2,10 +2,33 @@ import { BRAND_DATA } from '../../constants';
 import { motion } from 'motion/react';
 import { Phone, Mail, MapPin, Send, MessageCircle } from 'lucide-react';
 import { useState, FormEvent } from 'react';
+import { useSEO } from '../../utils/useSEO';
 
 export default function ContactPage() {
   const [formState, setFormState] = useState({ name: '', phone: '', message: '' });
   const [isSent, setIsSent] = useState(false);
+
+  useSEO({
+    title: 'Contact Us - Ghar Ka Swaad Nagpur | Order Tiffin Online',
+    description: 'Contact Ghar Ka Swaad for the best healthy homemade tiffin deliveries in Nagpur. Call or WhatsApp us to book a trial meal or customize your subscription.',
+    keywords: 'contact tiffin service nagpur, Ghar Ka Swaad phone number, order tiffin online nagpur, tiffin service customer care',
+    canonicalUrl: 'https://gharkaswaadngp.vercel.app/contact',
+    schema: {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [{
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://gharkaswaadngp.vercel.app/"
+      },{
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Contact Us",
+        "item": "https://gharkaswaadngp.vercel.app/contact"
+      }]
+    }
+  });
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();

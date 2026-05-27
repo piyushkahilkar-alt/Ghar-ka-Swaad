@@ -4,8 +4,51 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Check, Zap, Rocket, Star, Utensils, Leaf, X } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { startPayment } from '../../payment';
+import { useSEO } from '../../utils/useSEO';
 
 export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => void }) {
+  useSEO({
+    title: 'Tiffin Service Plans & Pricing - Nagpur | Ghar Ka Swaad',
+    description: 'Explore affordable daily, weekly, and monthly tiffin subscription plans in Nagpur. Enjoy pure veg, home-cooked food delivered to your home or office.',
+    keywords: 'tiffin plans nagpur, food subscription nagpur, daily meals nagpur, affordable tiffin service, office lunch plans',
+    canonicalUrl: 'https://gharkaswaadngp.vercel.app/plans',
+    schema: [
+      {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "itemListElement": BRAND_DATA.plans.map((plan, index) => ({
+          "@type": "ListItem",
+          "position": index + 1,
+          "item": {
+            "@type": "Product",
+            "name": plan.name,
+            "description": plan.description,
+            "offers": {
+              "@type": "Offer",
+              "price": plan.monthly_price,
+              "priceCurrency": "INR"
+            }
+          }
+        }))
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [{
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://gharkaswaadngp.vercel.app/"
+        },{
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Subscription Plans",
+          "item": "https://gharkaswaadngp.vercel.app/plans"
+        }]
+      }
+    ]
+  });
+
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [checkoutStep, setCheckoutStep] = useState(2); // Start directly at payment step
   const [isProcessingInfo, setIsProcessingInfo] = useState('');

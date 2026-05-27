@@ -1,9 +1,32 @@
 import { BRAND_DATA } from '../../constants';
 import { motion } from 'motion/react';
 import { Calendar, UtensilsCrossed, Soup, Beef } from 'lucide-react';
+import { useSEO } from '../../utils/useSEO';
 
 export default function MenuPage() {
   const days = Object.keys(BRAND_DATA.daily_menu) as (keyof typeof BRAND_DATA.daily_menu)[];
+
+  useSEO({
+    title: 'Daily Menu - Ghar Ka Swaad Tiffin Service Nagpur',
+    description: 'Check out our weekly rotating menu of fresh, home-cooked pure veg tiffins in Nagpur. Delicious Dal, Sabzi, Roti, and Rice delivered daily.',
+    keywords: 'tiffin menu nagpur, veg daily menu, office lunch menu nagpur, Ghar Ka Swaad menu, weekly meal plan',
+    canonicalUrl: 'https://gharkaswaadngp.vercel.app/menu',
+    schema: {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [{
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://gharkaswaadngp.vercel.app/"
+      },{
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Weekly Menu",
+        "item": "https://gharkaswaadngp.vercel.app/menu"
+      }]
+    }
+  });
 
   return (
     <div className="py-20 bg-brand-secondary min-h-screen">
@@ -96,7 +119,7 @@ export default function MenuPage() {
                  <img 
                     src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=1000" 
                     className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-110 duration-700" 
-                    alt="Salad"
+                    alt="Healthy Indian salad and home cooked meals served fresh in a lunch box"
                   />
                   <div className="absolute inset-0 bg-black/40"></div>
                   <div className="relative text-white text-center p-8">

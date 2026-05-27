@@ -53,27 +53,28 @@ export default function Navbar({ currentPage, onNavigate }: NavbarProps) {
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-8">
             {navItems.map((item) => (
-              <button
+              <a
+                href={item.value === 'home' ? '/' : `/${item.value}`}
                 key={item.value}
-                onClick={() => onNavigate(item.value)}
+                onClick={(e) => { e.preventDefault(); onNavigate(item.value); }}
                 className={`text-sm font-medium transition-colors hover:text-brand-primary ${
                   currentPage === item.value ? 'text-brand-primary border-b-2 border-brand-primary' : 'text-gray-600'
                 }`}
               >
                 {item.label}
-              </button>
+              </a>
             ))}
-            <button
-              onClick={handleOrderNow}
-              disabled={isOrdering}
-              className="bg-brand-primary text-white px-5 py-2 rounded-full text-sm font-semibold hover:bg-brand-primary/90 transition-all active:scale-95 flex items-center justify-center min-w-[110px]"
+            <a
+              href="/plans"
+              onClick={(e) => { e.preventDefault(); handleOrderNow(); }}
+              className={`bg-brand-primary text-white px-5 py-2 rounded-full text-sm font-semibold hover:bg-brand-primary/90 transition-all active:scale-95 flex items-center justify-center min-w-[110px] ${isOrdering ? 'opacity-70 pointer-events-none' : ''}`}
             >
               {isOrdering ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
               ) : (
                 "Order Now"
               )}
-            </button>
+            </a>
           </div>
 
           {/* Mobile Menu Toggle */}
@@ -90,9 +91,11 @@ export default function Navbar({ currentPage, onNavigate }: NavbarProps) {
       {isMobileMenuOpen && (
         <div className="md:hidden bg-white border-t border-gray-100 py-4 px-4 space-y-4 animate-in slide-in-from-top duration-200">
           {navItems.map((item) => (
-            <button
+            <a
+              href={item.value === 'home' ? '/' : `/${item.value}`}
               key={item.value}
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault();
                 onNavigate(item.value);
                 setIsMobileMenuOpen(false);
               }}
@@ -101,19 +104,19 @@ export default function Navbar({ currentPage, onNavigate }: NavbarProps) {
               }`}
             >
               {item.label}
-            </button>
+            </a>
           ))}
-          <button
-            onClick={handleOrderNow}
-            disabled={isOrdering}
-            className="w-full bg-brand-primary text-white px-4 py-3 rounded-xl text-center font-bold flex items-center justify-center min-h-[48px]"
+          <a
+            href="/plans"
+            onClick={(e) => { e.preventDefault(); handleOrderNow(); }}
+            className={`w-full bg-brand-primary text-white px-4 py-3 rounded-xl text-center font-bold flex items-center justify-center min-h-[48px] ${isOrdering ? 'opacity-70 pointer-events-none' : ''}`}
           >
             {isOrdering ? (
               <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/30 border-t-white"></div>
             ) : (
               "Order Now"
             )}
-          </button>
+          </a>
         </div>
       )}
     </nav>

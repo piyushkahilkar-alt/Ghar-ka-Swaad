@@ -1,4 +1,9 @@
 User-agent: *
 Allow: /
+Disallow: /api/
+Disallow: /dashboard
+
+User-agent: GPTBot
+Allow: /
 
 Sitemap: https://gharkaswaadngp.vercel.app/sitemap.xml

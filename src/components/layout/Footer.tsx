@@ -31,11 +31,11 @@ export default function Footer({ onNavigate }: FooterProps) {
         <div>
           <h4 className="text-white font-serif font-bold mb-6 text-2xl drop-shadow-sm">Quick Links</h4>
           <ul className="space-y-4 text-sm font-medium">
-            <li><button onClick={() => onNavigate('home')} className="hover:text-white transition-colors">Home</button></li>
-            <li><button onClick={() => onNavigate('plans')} className="hover:text-white transition-colors">Subscription Plans</button></li>
-            <li><button onClick={() => onNavigate('menu')} className="hover:text-white transition-colors">Weekly Menu</button></li>
-            <li><button onClick={() => onNavigate('track')} className="hover:text-white transition-colors">Track Your Tiffin</button></li>
-            <li><button onClick={() => onNavigate('contact')} className="hover:text-white transition-colors">Contact Us</button></li>
+            <li><a href="/" onClick={(e) => { e.preventDefault(); onNavigate('home'); }} className="hover:text-white transition-colors">Home</a></li>
+            <li><a href="/plans" onClick={(e) => { e.preventDefault(); onNavigate('plans'); }} className="hover:text-white transition-colors">Subscription Plans</a></li>
+            <li><a href="/menu" onClick={(e) => { e.preventDefault(); onNavigate('menu'); }} className="hover:text-white transition-colors">Weekly Menu</a></li>
+            <li><a href="/track" onClick={(e) => { e.preventDefault(); onNavigate('track'); }} className="hover:text-white transition-colors">Track Your Tiffin</a></li>
+            <li><a href="/contact" onClick={(e) => { e.preventDefault(); onNavigate('contact'); }} className="hover:text-white transition-colors">Contact Us</a></li>
           </ul>
         </div>
 
@@ -44,9 +44,9 @@ export default function Footer({ onNavigate }: FooterProps) {
           <ul className="space-y-4 text-sm font-medium">
             {BRAND_DATA.plans.map(plan => (
               <li key={plan.id}>
-                <button onClick={() => onNavigate('plans')} className="hover:text-white transition-colors">
+                <a href="/plans" onClick={(e) => { e.preventDefault(); onNavigate('plans'); }} className="hover:text-white transition-colors">
                   {plan.name}
-                </button>
+                </a>
               </li>
             ))}
           </ul>

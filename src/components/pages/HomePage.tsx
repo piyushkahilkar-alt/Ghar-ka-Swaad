@@ -3,12 +3,53 @@ import { BRAND_DATA } from '../../constants';
 import { motion } from 'motion/react';
 import { CheckCircle2, Star, ArrowRight, Clock, Utensils, Heart } from 'lucide-react';
 import { logoBase64 } from '../../assets/logoBase64';
+import { useSEO } from '../../utils/useSEO';
 
 interface HomePageProps {
   onNavigate: (page: PageType) => void;
 }
 
 export default function HomePage({ onNavigate }: HomePageProps) {
+  useSEO({
+    title: 'Ghar Ka Swaad - Home Cooked Tiffin Service in Nagpur',
+    description: 'Looking for the best tiffin service in Nagpur? Ghar Ka Swaad delivers 100% authentic, affordable, and healthy homemade veg food directly to your location.',
+    keywords: 'tiffin service nagpur, best tiffin service in nagpur, homemade food nagpur, veg tiffin service nagpur, lunch box delivery',
+    canonicalUrl: 'https://gharkaswaadngp.vercel.app/',
+    schema: {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [{
+        "@type": "Question",
+        "name": "Can I customize my meals?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes! We offer a variety of addons and options to replace sabzi or roti with other items. You can chat with us and let us know your preferences."
+        }
+      }, {
+        "@type": "Question",
+        "name": "How do I pay?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "We accept Razorpay for online payments, which supports Google Pay, PhonePe, Paytm, cards, and net banking."
+        }
+      }, {
+        "@type": "Question",
+        "name": "Do you deliver to my area?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "We currently deliver to most major areas within Nagpur. If you are unsure, please reach out via our AI Chat below or WhatsApp."
+        }
+      }, {
+        "@type": "Question",
+        "name": "Can I cancel my subscription?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, you can pause or cancel your subscription anytime from your dashboard."
+        }
+      }]
+    }
+  });
+
   return (
     <div className="flex flex-col">
       {/* Hero Section */}
