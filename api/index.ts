@@ -460,16 +460,19 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
         // Update the user's document in Firestore with subscription details
         const renewal = new Date();
         renewal.setDate(renewal.getDate() + 30);
-        await adminDb.collection("users").doc(userId).set({
-          subscription: {
+        const newSubInfo = {
             status: 'active',
             planName: planName || "Unknown Plan",
             planId: planId ? planId.toString() : "",
             isPaused: false,
             startDate: new Date().toISOString(),
             renewalDate: renewal.toISOString(),
-            expiryDate: renewal.toISOString()
-          }
+            expiryDate: renewal.toISOString(),
+            paymentId: razorpay_payment_id
+        };
+        await adminDb.collection("users").doc(userId).set({
+          subscription: newSubInfo, // Legacy fallback
+          subscriptions: FieldValue.arrayUnion(newSubInfo)
         }, { merge: true });
         
       } catch (e) {
@@ -567,15 +570,18 @@ app.post('/api/webhook', async (req, res) => {
 
           if (userId !== 'unknown_user') {
             const renewal = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-            await adminDb.collection("users").doc(userId).set({
-              subscription: {
+            const newSubInfo = {
                 status: 'active',
                 planName: planName,
                 isPaused: false,
                 startDate: new Date().toISOString(),
                 renewalDate: renewal.toISOString(),
-                expiryDate: renewal.toISOString()
-              }
+                expiryDate: renewal.toISOString(),
+                paymentId: payment.id
+            };
+            await adminDb.collection("users").doc(userId).set({
+              subscription: newSubInfo,
+              subscriptions: FieldValue.arrayUnion(newSubInfo)
             }, { merge: true });
           }
         } catch (dbErr) {

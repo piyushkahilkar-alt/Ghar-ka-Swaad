@@ -515,16 +515,19 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
         // Update the user's document in Firestore with subscription details
         const renewal = new Date();
         renewal.setDate(renewal.getDate() + 30);
-        await adminDb.collection("users").doc(userId).set({
-          subscription: {
+        const newSubInfo = {
             status: 'active',
             planName: planName || "Unknown Plan",
             planId: planId ? planId.toString() : "",
             isPaused: false,
             startDate: new Date().toISOString(),
             renewalDate: renewal.toISOString(),
-            expiryDate: renewal.toISOString()
-          }
+            expiryDate: renewal.toISOString(),
+            paymentId: razorpay_payment_id
+        };
+        await adminDb.collection("users").doc(userId).set({
+          subscription: newSubInfo, // Legacy fallback
+          subscriptions: FieldValue.arrayUnion(newSubInfo)
         }, { merge: true });
 
       } catch (e) {
@@ -590,9 +593,12 @@ app.get('/api/orders', authenticateToken, async (req: any, res: any) => {
     const user = await User.findById(req.user.id);
     
     // Generate some history based on whether they have an active plan or not
-    const history = user?.subscription?.planName ? [
-      { id: 1, date: new Date().toISOString().split('T')[0], meal: user.subscription.planName, status: 'Out for Delivery' },
-    ] : [];
+    let history: any[] = [];
+    if (user?.subscriptions && user.subscriptions.length > 0) {
+       history = user.subscriptions.map((sub: any, i: number) => ({ id: i + 1, date: new Date().toISOString().split('T')[0], meal: sub.planName, status: 'Out for Delivery' }));
+    } else if (user?.subscription?.planName) {
+       history = [{ id: 1, date: new Date().toISOString().split('T')[0], meal: user.subscription.planName, status: 'Out for Delivery' }];
+    }
 
     res.json({
       activePlan: user?.subscription?.planName || null,
@@ -660,15 +666,18 @@ app.post('/api/webhook', async (req, res) => {
           
           if (userId !== 'unknown_user') {
             const renewal = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-            await adminDb.collection("users").doc(userId).set({
-              subscription: {
+            const newSubInfo = {
                 status: 'active',
                 planName: planName,
                 isPaused: false,
                 startDate: new Date().toISOString(),
                 renewalDate: renewal.toISOString(),
-                expiryDate: renewal.toISOString()
-              }
+                expiryDate: renewal.toISOString(),
+                paymentId: payment.id
+            };
+            await adminDb.collection("users").doc(userId).set({
+              subscription: newSubInfo,
+              subscriptions: FieldValue.arrayUnion(newSubInfo)
             }, { merge: true });
           }
 

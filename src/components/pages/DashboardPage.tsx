@@ -52,9 +52,12 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
           setNotifications(localUser.notifications);
         }
         
-        const localHistory = localUser?.subscription?.planName ? [
-          { id: 1, date: new Date().toISOString().split('T')[0], meal: localUser.subscription.planName, status: 'Out for Delivery' },
-        ] : [];
+        let localHistory: any[] = [];
+        if (localUser?.subscriptions && localUser.subscriptions.length > 0) {
+            localHistory = localUser.subscriptions.map((sub: any, i: number) => ({ id: i + 1, date: new Date().toISOString().split('T')[0], meal: sub.planName, status: 'Out for Delivery' }));
+        } else if (localUser?.subscription?.planName) {
+            localHistory = [{ id: 1, date: new Date().toISOString().split('T')[0], meal: localUser.subscription.planName, status: 'Out for Delivery' }];
+        }
     
         setOrders({
           activePlan: localUser?.subscription?.planName || null,
@@ -92,9 +95,12 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
           const storage = sessionStorage.getItem('token') ? sessionStorage : localStorage;
           storage.setItem('user', JSON.stringify({ uid: uid, email: localUser.email, ...freshUser }));
 
-          const freshHistory = freshUser?.subscription?.planName ? [
-            { id: 1, date: new Date().toISOString().split('T')[0], meal: freshUser.subscription.planName, status: 'Out for Delivery' },
-          ] : [];
+          let freshHistory: any[] = [];
+          if (freshUser?.subscriptions && freshUser.subscriptions.length > 0) {
+              freshHistory = freshUser.subscriptions.map((sub: any, i: number) => ({ id: i + 1, date: new Date().toISOString().split('T')[0], meal: sub.planName, status: 'Out for Delivery' }));
+          } else if (freshUser?.subscription?.planName) {
+              freshHistory = [{ id: 1, date: new Date().toISOString().split('T')[0], meal: freshUser.subscription.planName, status: 'Out for Delivery' }];
+          }
       
           setOrders({
             activePlan: freshUser?.subscription?.planName || null,
