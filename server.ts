@@ -10,7 +10,7 @@ import crypto from 'crypto';
 import Razorpay from 'razorpay';
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { sendWhatsAppMessage } from './src/services/whatsapp.js';
+import { sendWhatsAppMessage } from './src/services/whatsapp';
 
 dotenv.config();
 

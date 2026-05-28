@@ -8,7 +8,7 @@ import crypto from 'crypto';
 import Razorpay from 'razorpay';
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { sendWhatsAppMessage } from '../src/services/whatsapp.js';
+import { sendWhatsAppMessage } from '../src/services/whatsapp';
 
 dotenv.config();
 
@@ -150,7 +150,7 @@ const authenticateToken = (req: any, res: any, next: any) => {
 
 // --- API Routes ---
 
-app.post('/api/send-otp', async (req, res) => {
+app.post(['/api/send-otp', '/send-otp'], async (req, res) => {
   try {
     const { phoneOrEmail } = req.body;
     if (!phoneOrEmail) {
@@ -164,7 +164,7 @@ app.post('/api/send-otp', async (req, res) => {
   }
 });
 
-app.post('/api/register', async (req, res) => {
+app.post(['/api/register', '/register'], async (req, res) => {
   try {
     const { name, phoneOrEmail, password, address, landmark, city, mapLink, latitude, longitude } = req.body;
 
@@ -203,7 +203,7 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-app.post('/api/login', async (req, res) => {
+app.post(['/api/login', '/login'], async (req, res) => {
   try {
     const { phoneOrEmail, password } = req.body;
 
@@ -221,7 +221,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-app.put('/api/profile', authenticateToken, async (req: any, res: any) => {
+app.put(['/api/profile', '/profile'], authenticateToken, async (req: any, res: any) => {
   try {
     const { name, phoneOrEmail } = req.body;
     
@@ -247,7 +247,7 @@ app.put('/api/profile', authenticateToken, async (req: any, res: any) => {
   }
 });
 
-app.get('/api/profile', authenticateToken, async (req: any, res: any) => {
+app.get(['/api/profile', '/profile'], authenticateToken, async (req: any, res: any) => {
   try {
     let user = await User.findById(req.user.id);
     if (user && !user.referralCode) {
@@ -394,7 +394,7 @@ app.get('/api/track-order/:phone', async (req: any, res: any) => {
   }
 });
 
-app.get('/api/orders', authenticateToken, async (req: any, res: any) => {
+app.get(['/api/orders', '/orders'], authenticateToken, async (req: any, res: any) => {
   try {
     const user = await User.findById(req.user.id);
     
@@ -422,7 +422,7 @@ app.get('/api/orders', authenticateToken, async (req: any, res: any) => {
 });
 
 // Payment Routes - Razorpay
-app.post('/api/create-order', authenticateToken, async (req: any, res: any) => {
+app.post(['/api/create-order', '/create-order'], authenticateToken, async (req: any, res: any) => {
   try {
     const { amount, currency, receipt, notes } = req.body;
     const finalAmount = amount || 100; // Use actual amount or fallback to 1 INR
@@ -465,7 +465,7 @@ app.post('/api/create-order', authenticateToken, async (req: any, res: any) => {
   }
 });
 
-app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) => {
+app.post(['/api/verify-payment', '/verify-payment'], authenticateToken, async (req: any, res: any) => {
   try {
     console.log(`[Verify Payment] Received verification request for order: ${req.body.razorpay_order_id}`);
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, userId, planName, amount, planId } = req.body;
@@ -619,7 +619,7 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
 });
 
 // Razorpay Webhook Endpoint
-app.post('/api/webhook', async (req, res) => {
+app.post(['/api/webhook', '/webhook'], async (req, res) => {
   try {
     const webhookSecret = "pXmA9tDdGrz8gt6MZDdo0STs";
     const signature = req.headers['x-razorpay-signature'];
@@ -770,7 +770,7 @@ app.post('/api/webhook', async (req, res) => {
   }
 });
 
-app.get('/api/admin/sync-sheets', async (req: any, res: any) => {
+app.get(['/api/admin/sync-sheets', '/admin/sync-sheets'], async (req: any, res: any) => {
   try {
     if (!adminDb) return res.status(500).json({ error: "Firebase admin not initialized." });
     
