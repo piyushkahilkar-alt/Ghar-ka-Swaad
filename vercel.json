@@ -2,11 +2,7 @@
   "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api"
-    },
-    {
-      "source": "/((?!sitemap\\.xml|robots\\.txt).*)$",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
