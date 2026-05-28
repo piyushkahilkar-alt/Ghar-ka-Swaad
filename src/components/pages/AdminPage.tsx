@@ -1,27 +1,36 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { Search, MapPin, Phone, Mail, Package, IndianRupee } from 'lucide-react';
+import { Search, MapPin, Phone, Mail, Package, IndianRupee, AlertCircle } from 'lucide-react';
 import FoodLoader from '../ui/FoodLoader';
 
 export default function AdminPage() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchData() {
+    setLoading(true);
+    setError(null);
+    console.log('Setting up real-time listener for Firestore data...');
+    
+    const usersCol = collection(db, 'users');
+    const paymentsCol = collection(db, 'payments');
+    
+    // We will listen to users and payments
+    let unsubscribeUsers: () => void;
+    let unsubscribePayments: () => void;
+    
+    let currentUsers: any[] = [];
+    let currentPayments: any[] = [];
+    
+    const processCustomers = (users: any[], payments: any[]) => {
       try {
-        const [usersSnap, paymentsSnap] = await Promise.all([
-          getDocs(collection(db, 'users')),
-          getDocs(collection(db, 'payments'))
-        ]);
-
         const paymentsMap: Record<string, number> = {};
         const paymentsByUser: Record<string, number> = {};
         
-        paymentsSnap.forEach(doc => {
-          const data = doc.data();
+        payments.forEach(data => {
           if (data.paymentId) {
             paymentsMap[data.paymentId] = data.amount || 0;
           }
@@ -31,9 +40,7 @@ export default function AdminPage() {
         });
 
         const usersList: any[] = [];
-        usersSnap.forEach(doc => {
-          const data = doc.data();
-          
+        users.forEach(data => {
           let planName = 'No active plan';
           let amountPaid = 0;
 
@@ -48,14 +55,19 @@ export default function AdminPage() {
              if (latestSub.paymentId && paymentsMap[latestSub.paymentId]) {
                  amountPaid = paymentsMap[latestSub.paymentId];
              }
+          } else if (data.selectedPlan) {
+             planName = data.selectedPlan;
+          } else if (data.planName) {
+             planName = data.planName;
+          } else if (data.plan) {
+             planName = data.plan;
           }
 
           // Fallback to total payments by user if no specific sub payment amount found
-          if (amountPaid === 0 && paymentsByUser[doc.id]) {
-             amountPaid = paymentsByUser[doc.id];
+          if (amountPaid === 0 && paymentsByUser[data.id]) {
+             amountPaid = paymentsByUser[data.id];
           }
 
-          // Handle creation time sorting safely
           let time = 0;
           if (data.createdAt && typeof data.createdAt.toMillis === 'function') {
              time = data.createdAt.toMillis();
@@ -64,34 +76,62 @@ export default function AdminPage() {
           } else if (data.createdAt) {
              const parsed = new Date(data.createdAt).getTime();
              if (!isNaN(parsed)) time = parsed;
+          } else if (data.timestamp) {
+             time = data.timestamp;
           }
 
           let fullAddress = [data.address, data.landmark, data.city].filter(Boolean).join(', ');
           if (!fullAddress) fullAddress = 'N/A';
 
           usersList.push({
-            id: doc.id,
-            name: data.name || data.displayName || 'Unknown',
-            phone: data.phone || data.phoneNumber || data.phoneOrEmail || 'N/A',
+            id: data.id,
+            name: data.name || data.displayName || data.fullName || 'Unknown',
+            phone: data.phone || data.phoneNumber || data.mobile || data.phoneOrEmail || 'N/A',
             email: data.email || 'N/A',
             address: fullAddress,
             plan: planName,
-            amount: amountPaid,
-            createdAt: time
+            amount: amountPaid || data.amount || data.paidAmount || data.amountPaid || 0,
+            createdAt: time || Date.now()
           });
         });
 
-        // Show latest customers first
         usersList.sort((a, b) => b.createdAt - a.createdAt);
-        
+        console.log('Processed customers:', usersList);
         setCustomers(usersList);
-      } catch (error) {
-        console.error('Error fetching admin data:', error);
-      } finally {
-        setLoading(false);
+      } catch (err: any) {
+        console.error('Error processing data:', err);
+        setError('Error processing data display');
       }
+    };
+
+    try {
+        unsubscribeUsers = onSnapshot(usersCol, (snap) => {
+            currentUsers = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            processCustomers(currentUsers, currentPayments);
+            setLoading(false);
+        }, (err) => {
+            console.error('Users fetch error:', err);
+            setError(err.message || 'Failed to fetch users. Check Firebase permissions.');
+            setLoading(false);
+        });
+        
+        unsubscribePayments = onSnapshot(paymentsCol, (snap) => {
+            currentPayments = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            processCustomers(currentUsers, currentPayments);
+        }, (err) => {
+            console.error('Payments fetch error:', err);
+        });
+
+    } catch (e: any) {
+        console.error("Firestore init error", e);
+        setError("Failed to connect to Firebase.");
+        setLoading(false);
     }
-    fetchData();
+    
+    return () => {
+      if (unsubscribeUsers) unsubscribeUsers();
+      if (unsubscribePayments) unsubscribePayments();
+    };
   }, []);
 
   const filteredCustomers = useMemo(() => {
@@ -137,9 +177,18 @@ export default function AdminPage() {
         </div>
 
         {/* Customer List */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCustomers.map(customer => (
-            <div key={customer.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+        {error ? (
+          <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-xl flex items-center gap-3">
+             <AlertCircle size={24} className="text-red-500 shrink-0" />
+             <div>
+                <h3 className="font-bold text-red-800">Connection Error</h3>
+                <p>{error}</p>
+             </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredCustomers.map(customer => (
+              <div key={customer.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
               
               <div className="flex justify-between items-start mb-4">
                 <div>
@@ -179,10 +228,11 @@ export default function AdminPage() {
           
           {filteredCustomers.length === 0 && (
              <div className="col-span-full py-20 text-center text-gray-500">
-               No customers found matching your search.
+               {searchTerm ? 'No customers found matching your search.' : 'No customer data available'}
              </div>
           )}
         </div>
+        )}
 
       </div>
     </div>
