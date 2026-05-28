@@ -556,7 +556,7 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
                         onChange={() => toggleNotification('orderUpdates')}
                         disabled={savingPrefs}
                       />
-                      <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${notifications.orderUpdates ? 'bg-brand-primary' : ''}`}></div>
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:bg-blue-500 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:duration-300 after:ease-in-out transition-colors duration-300"></div>
                    </div>
                 </label>
 
@@ -575,7 +575,7 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
                         onChange={() => toggleNotification('menuAnnouncements')}
                         disabled={savingPrefs}
                       />
-                      <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${notifications.menuAnnouncements ? 'bg-brand-primary' : ''}`}></div>
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:bg-blue-500 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all after:duration-300 after:ease-in-out transition-colors duration-300"></div>
                    </div>
                 </label>
              </div>
