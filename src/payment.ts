@@ -111,11 +111,46 @@ export const startPayment = async (
                 try {
                     onProcessing('Activating Subscription...');
                     await verifyPayment(finalResponse, token, userStr, plan);
-                    toast.success('Payment Successful! Please share screenshot of this payment on our WhatsApp.', { duration: 6000, icon: '📱' });
+                    toast.success('Payment Successful!', { duration: 6000, icon: '✅' });
                     onSuccess(finalResponse.razorpay_payment_id);
+                    
+                    const userObj = JSON.parse(userStr);
+                    const planDate = new Date();
+                    const expiryDate = new Date();
+                    expiryDate.setDate(planDate.getDate() + 30);
+
+                    const sheetData = {
+                      name: userObj.name || userObj.displayName || 'Not provided',
+                      mobile: userObj.phone || userObj.phoneNumber || 'Not provided',
+                      email: userObj.email || 'Not provided',
+                      address: [userObj.address, userObj.landmark, userObj.city].filter(Boolean).join(', '),
+                      selectedPlan: plan.name,
+                      amountPaid: plan.monthly_price,
+                      planDate: planDate.toISOString(),
+                      expiryDate: expiryDate.toISOString()
+                    };
+
+                    fetch("https://script.google.com/macros/s/AKfycbymDzWgpjJQcgWateXiuCh9a-ZgcLSVETbP90EVyp8rlLzbJhrMEh57PoZQpG7mbb9c9A/exec", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify(sheetData)
+                    }).catch(e => console.error("Webhook failed:", e));
+                    
+                    const whatsappMsg = `*New Subscription Alert!*\n\n` +
+                      `*Name:* ${sheetData.name}\n` +
+                      `*Mobile Number:* ${sheetData.mobile}\n` +
+                      `*Email:* ${sheetData.email}\n` +
+                      `*Address:* ${sheetData.address}\n` +
+                      `*Selected Plan:* ${plan.name}\n` +
+                      `*Amount Paid:* ₹${plan.monthly_price}\n\n` +
+                      `*Payment ID:* ${finalResponse.razorpay_payment_id}`;
+                      
                     setTimeout(() => {
-                        window.open(`https://wa.me/918275116821?text=Hi, I subscribed to ${encodeURIComponent(plan.name)}. Payment ID: ${finalResponse.razorpay_payment_id}. Please find attached my screenshot.`, '_blank');
+                        window.open(`https://wa.me/918275116821?text=${encodeURIComponent(whatsappMsg)}`, '_blank');
                     }, 3000);
+                    
                 } catch (err: any) {
                     toast.error(`Verification Failed: ${err.message}`);
                     onError(err);
