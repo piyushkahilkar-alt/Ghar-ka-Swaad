@@ -55,20 +55,26 @@ export default function AdminPage() {
              amountPaid = paymentsByUser[doc.id];
           }
 
-          // Handle creation time sorting
+          // Handle creation time sorting safely
           let time = 0;
-          if (data.createdAt && data.createdAt.toMillis) {
+          if (data.createdAt && typeof data.createdAt.toMillis === 'function') {
              time = data.createdAt.toMillis();
+          } else if (data.createdAt && typeof data.createdAt === 'number') {
+             time = data.createdAt;
           } else if (data.createdAt) {
-             time = new Date(data.createdAt).getTime();
+             const parsed = new Date(data.createdAt).getTime();
+             if (!isNaN(parsed)) time = parsed;
           }
+
+          let fullAddress = [data.address, data.landmark, data.city].filter(Boolean).join(', ');
+          if (!fullAddress) fullAddress = 'N/A';
 
           usersList.push({
             id: doc.id,
-            name: data.name || 'Unknown',
-            phone: data.phone || 'N/A',
+            name: data.name || data.displayName || 'Unknown',
+            phone: data.phone || data.phoneNumber || data.phoneOrEmail || 'N/A',
             email: data.email || 'N/A',
-            address: data.address || 'N/A',
+            address: fullAddress,
             plan: planName,
             amount: amountPaid,
             createdAt: time
