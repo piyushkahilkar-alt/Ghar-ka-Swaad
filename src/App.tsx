@@ -22,12 +22,40 @@ const TrackOrderPage = lazy(() => import('./components/pages/TrackOrderPage'));
 const LoginPage = lazy(() => import('./components/pages/LoginPage'));
 const RegisterPage = lazy(() => import('./components/pages/RegisterPage'));
 const DashboardPage = lazy(() => import('./components/pages/DashboardPage'));
+const AdminPage = lazy(() => import('./components/pages/AdminPage'));
 
-export type PageType = 'home' | 'plans' | 'menu' | 'contact' | 'track' | 'login' | 'register' | 'dashboard';
+export type PageType = 'home' | 'plans' | 'menu' | 'contact' | 'track' | 'login' | 'register' | 'dashboard' | 'admin';
+
+const getInitialPage = (): PageType => {
+  const path = window.location.pathname.replace('/', '') as PageType;
+  const validPages: PageType[] = ['home', 'plans', 'menu', 'contact', 'track', 'login', 'register', 'dashboard', 'admin'];
+  if (validPages.includes(path)) {
+    return path;
+  }
+  return 'home';
+};
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<PageType>('home');
+  const [currentPage, setCurrentPage] = useState<PageType>(getInitialPage);
   const [isAuthChecking, setIsAuthChecking] = useState(() => !localStorage.getItem('user') && !sessionStorage.getItem('user'));
+
+  // Sync URL with current page state
+  useEffect(() => {
+    const currentPath = window.location.pathname.replace('/', '');
+    const newPath = currentPage === 'home' ? '/' : `/${currentPage}`;
+    if (currentPath !== currentPage && !(currentPath === '' && currentPage === 'home')) {
+      window.history.pushState({}, '', newPath);
+    }
+  }, [currentPage]);
+
+  // Handle browser back and forward
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPage(getInitialPage());
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Scroll to top on page change
   useEffect(() => {
@@ -127,6 +155,9 @@ export default function App() {
         break;
       case 'dashboard':
         PageComponent = <DashboardPage onNavigate={setCurrentPage} />;
+        break;
+      case 'admin':
+        PageComponent = <AdminPage />;
         break;
       default:
         PageComponent = <HomePage onNavigate={setCurrentPage} />;
