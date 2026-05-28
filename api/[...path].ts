@@ -540,6 +540,50 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
          sendWhatsAppMessage(phoneToSend, successMessage);
       }
       sendWhatsAppMessage("827516821", ownerMessage);
+
+      // Silent Google Sheets Webhook
+      try {
+        let webhookUserObj = { name: "Not provided", email: "Not provided", address: "Not provided" };
+        if (adminDb && actualUserId) {
+           const snap = await adminDb.collection("users").doc(actualUserId).get();
+           if (snap.exists && snap.data()) {
+               const data = snap.data();
+               webhookUserObj = {
+                 name: data.name || data.displayName || "Not provided",
+                 email: data.email || "Not provided",
+                 address: [data.address, data.landmark, data.city].filter(Boolean).join(', ')
+               };
+               if (!phoneToSend || phoneToSend === "Customer") {
+                  phoneToSend = data.phone || data.phoneNumber || "Not provided";
+               }
+           }
+        }
+
+        const planDate = new Date();
+        const expiryDate = new Date();
+        expiryDate.setDate(planDate.getDate() + 30);
+
+        const sheetData = {
+          name: webhookUserObj.name,
+          mobile: phoneToSend,
+          email: webhookUserObj.email,
+          address: webhookUserObj.address || "Not provided",
+          selectedPlan: planName,
+          amountPaid: numericAmount,
+          planDate: planDate.toISOString(),
+          expiryDate: expiryDate.toISOString()
+        };
+
+        fetch("https://script.google.com/macros/s/AKfycbymDzWgpjJQcgWateXiuCh9a-ZgcLSVETbP90EVyp8rlLzbJhrMEh57PoZQpG7mbb9c9A/exec", {
+          method: "POST",
+          headers: {
+             "Content-Type": "application/json",
+          },
+          body: JSON.stringify(sheetData)
+        }).catch(e => console.error("Webhook post failed:", e));
+      } catch (err) {
+        console.error("Webhook processing error:", err);
+      }
     } catch(err) {
       console.error("Error sending WA in verify:", err);
     }
@@ -723,6 +767,64 @@ app.post('/api/webhook', async (req, res) => {
   } catch (error) {
     console.error('Webhook processing error:', error);
     res.status(500).send("Webhook processing failed");
+  }
+});
+
+app.get('/api/admin/sync-sheets', async (req: any, res: any) => {
+  try {
+    if (!adminDb) return res.status(500).json({ error: "Firebase admin not initialized." });
+    
+    const usersSnap = await adminDb.collection("users").get();
+    const paymentsSnap = await adminDb.collection("payments").get();
+    
+    const paymentsByUser: Record<string, number> = {};
+    paymentsSnap.forEach((doc: any) => {
+      const data = doc.data();
+      if (data.userId && data.amount) {
+         paymentsByUser[data.userId] = (paymentsByUser[data.userId] || 0) + data.amount;
+      }
+    });
+
+    const syncedUsers = [];
+    const webhookUrl = "https://script.google.com/macros/s/AKfycbymDzWgpjJQcgWateXiuCh9a-ZgcLSVETbP90EVyp8rlLzbJhrMEh57PoZQpG7mbb9c9A/exec";
+
+    for (const doc of usersSnap.docs) {
+       const data = doc.data();
+       
+       let planName = data.subscription?.planName || data.selectedPlan || data.planName || data.plan || "Old Plan";
+       let time = data.createdAt ? (typeof data.createdAt.toMillis === 'function' ? data.createdAt.toMillis() : new Date(data.createdAt).getTime()) : Date.now();
+       if (isNaN(time)) time = Date.now();
+       
+       let amountPaid = paymentsByUser[doc.id] || data.amount || data.paidAmount || data.amountPaid || 0;
+       
+       const planDate = new Date(time);
+       const expiryDate = new Date(time);
+       expiryDate.setDate(planDate.getDate() + 30);
+       
+       const sheetData = {
+          name: data.name || data.displayName || data.fullName || "Not provided",
+          mobile: data.phone || data.phoneNumber || data.mobile || data.phoneOrEmail || "Not provided",
+          email: data.email || "Not provided",
+          address: [data.address, data.landmark, data.city].filter(Boolean).join(', ') || "Not provided",
+          selectedPlan: planName,
+          amountPaid: amountPaid,
+          planDate: planDate.toISOString(),
+          expiryDate: expiryDate.toISOString()
+       };
+
+       fetch(webhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(sheetData)
+       }).catch(e => console.error("Sync Webhook failed for user", doc.id, e));
+       
+       syncedUsers.push(sheetData);
+    }
+    
+    res.json({ success: true, count: syncedUsers.length, users: syncedUsers });
+  } catch (err: any) {
+    console.error("Sync Error:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 

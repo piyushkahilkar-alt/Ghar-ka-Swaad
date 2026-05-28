@@ -115,34 +115,11 @@ export const startPayment = async (
                     onSuccess(finalResponse.razorpay_payment_id);
                     
                     const userObj = JSON.parse(userStr);
-                    const planDate = new Date();
-                    const expiryDate = new Date();
-                    expiryDate.setDate(planDate.getDate() + 30);
-
-                    const sheetData = {
-                      name: userObj.name || userObj.displayName || 'Not provided',
-                      mobile: userObj.phone || userObj.phoneNumber || 'Not provided',
-                      email: userObj.email || 'Not provided',
-                      address: [userObj.address, userObj.landmark, userObj.city].filter(Boolean).join(', '),
-                      selectedPlan: plan.name,
-                      amountPaid: plan.monthly_price,
-                      planDate: planDate.toISOString(),
-                      expiryDate: expiryDate.toISOString()
-                    };
-
-                    fetch("https://script.google.com/macros/s/AKfycbymDzWgpjJQcgWateXiuCh9a-ZgcLSVETbP90EVyp8rlLzbJhrMEh57PoZQpG7mbb9c9A/exec", {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                      },
-                      body: JSON.stringify(sheetData)
-                    }).catch(e => console.error("Webhook failed:", e));
-                    
                     const whatsappMsg = `*New Subscription Alert!*\n\n` +
-                      `*Name:* ${sheetData.name}\n` +
-                      `*Mobile Number:* ${sheetData.mobile}\n` +
-                      `*Email:* ${sheetData.email}\n` +
-                      `*Address:* ${sheetData.address}\n` +
+                      `*Name:* ${userObj.name || userObj.displayName || 'Not provided'}\n` +
+                      `*Mobile Number:* ${userObj.phone || userObj.phoneNumber || 'Not provided'}\n` +
+                      `*Email:* ${userObj.email || 'Not provided'}\n` +
+                      `*Address:* ${[userObj.address, userObj.landmark, userObj.city].filter(Boolean).join(', ')}\n` +
                       `*Selected Plan:* ${plan.name}\n` +
                       `*Amount Paid:* ₹${plan.monthly_price}\n\n` +
                       `*Payment ID:* ${finalResponse.razorpay_payment_id}`;
