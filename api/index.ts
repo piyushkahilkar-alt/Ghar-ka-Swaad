@@ -294,7 +294,15 @@ app.post(['/api/register', '/register'], async (req, res) => {
           selectedPlan: "N/A (Just Registered)",
           amountPaid: 0,
           planDate: new Date().toISOString(),
-          expiryDate: new Date().toISOString()
+          expiryDate: new Date().toISOString(),
+          Name: name || "Not provided",
+          Mobile: phoneOrEmail || "Not provided",
+          Email: phoneOrEmail || "Not provided",
+          Address: [address, landmark, city].filter(Boolean).join(', ') || "Not provided",
+          Plan: "N/A (Just Registered)",
+          Amount: 0,
+          Date: new Date().toISOString(),
+          "Expiry date": new Date().toISOString()
         };
         fetch("https://script.google.com/macros/s/AKfycbymDzWgpjJQcgWateXiuCh9a-ZgcLSVETbP90EVyp8rlLzbJhrMEh57PoZQpG7mbb9c9A/exec", {
           method: "POST",
@@ -714,7 +722,15 @@ app.post(['/api/verify-payment', '/verify-payment'], authenticateToken, async (r
           selectedPlan: planName,
           amountPaid: numericAmount,
           planDate: planDate.toISOString(),
-          expiryDate: expiryDate.toISOString()
+          expiryDate: expiryDate.toISOString(),
+          Name: webhookUserObj.name,
+          Mobile: phoneToSend,
+          Email: webhookUserObj.email,
+          Address: webhookUserObj.address || "Not provided",
+          Plan: planName,
+          Amount: numericAmount,
+          Date: planDate.toISOString(),
+          "Expiry date": expiryDate.toISOString()
         };
 
         fetch("https://script.google.com/macros/s/AKfycbymDzWgpjJQcgWateXiuCh9a-ZgcLSVETbP90EVyp8rlLzbJhrMEh57PoZQpG7mbb9c9A/exec", {
@@ -952,7 +968,15 @@ app.get(['/api/admin/sync-sheets', '/admin/sync-sheets'], async (req: any, res: 
           selectedPlan: planName,
           amountPaid: amountPaid,
           planDate: planDate.toISOString(),
-          expiryDate: (data.subscription?.expiryDate) ? new Date(data.subscription.expiryDate).toISOString() : expiryDate.toISOString()
+          expiryDate: (data.subscription?.expiryDate) ? new Date(data.subscription.expiryDate).toISOString() : expiryDate.toISOString(),
+          Name: data.name || data.displayName || data.fullName || "Not provided",
+          Mobile: data.phone || data.phoneNumber || data.mobile || data.phoneOrEmail || "Not provided",
+          Email: data.email || data.phoneOrEmail || "Not provided",
+          Address: [data.address, data.landmark, data.city].filter(Boolean).join(', ') || "Not provided",
+          Plan: planName,
+          Amount: amountPaid,
+          Date: planDate.toISOString(),
+          "Expiry date": (data.subscription?.expiryDate) ? new Date(data.subscription.expiryDate).toISOString() : expiryDate.toISOString()
        };
 
        fetch(webhookUrl, {
