@@ -632,14 +632,31 @@ app.post(['/api/verify-payment', '/verify-payment'], authenticateToken, async (r
     
     console.log(`[Verify Payment] Signature matched for order: ${razorpay_order_id}. Capturing successful payment.`);
 
-    const numericAmount = parseFloat((amount || "0").toString().replace(/[^0-9.]/g, ''));
+    let actualPaidAmount = parseFloat((amount || "0").toString().replace(/[^0-9.]/g, ''));
+    try {
+        let RazorpayClass = Razorpay;
+        if (typeof Razorpay !== "function" && (Razorpay as any).default) {
+           RazorpayClass = (Razorpay as any).default;
+        }
+        const rzp = new RazorpayClass({
+          key_id: "rzp_live_SuJKak8lep7KID",
+          key_secret: secret,
+        });
+        const paymentData = await rzp.payments.fetch(razorpay_payment_id);
+        if (paymentData && paymentData.amount) {
+            actualPaidAmount = Number(paymentData.amount) / 100;
+        }
+    } catch (fetchErr) {
+        console.error("Failed to fetch Razorpay payment:", fetchErr);
+    }
+
     if (adminDb && userId) {
       try {
         await adminDb.collection("payments").doc(razorpay_payment_id).set({
           paymentId: razorpay_payment_id,
           orderId: razorpay_order_id,
           userId: userId,
-          amount: numericAmount,
+          amount: actualPaidAmount,
           status: "success",
           plan: planName || "Unknown Plan",
           createdAt: new Date().toISOString()
@@ -657,7 +674,7 @@ app.post(['/api/verify-payment', '/verify-payment'], authenticateToken, async (r
             renewalDate: renewal.toISOString(),
             expiryDate: renewal.toISOString(),
             paymentId: razorpay_payment_id,
-            amountPaid: numericAmount,
+            amountPaid: actualPaidAmount,
             paymentStatus: 'success'
         };
         await adminDb.collection("users").doc(userId).set({
@@ -678,13 +695,13 @@ app.post(['/api/verify-payment', '/verify-payment'], authenticateToken, async (r
         if (user && user.phoneOrEmail) phoneToSend = user.phoneOrEmail;
       }
       
-      const successMessage = `Hello, your payment of ₹${numericAmount} for the ${planName} plan was successful! Enjoy your subscription.`;
-      const ownerMessage = `[Admin Alert] User ${phoneToSend} (ID: ${actualUserId}) bought ${planName} for ₹${numericAmount}. Payment ID: ${razorpay_payment_id}`;
+      const successMessage = `Hello, your payment of ₹${actualPaidAmount} for the ${planName} plan was successful! Enjoy your subscription.`;
+      const ownerMessage = `[Admin Alert] User ${phoneToSend} (ID: ${actualUserId}) bought ${planName} for ₹${actualPaidAmount}. Payment ID: ${razorpay_payment_id}`;
       
       if (phoneToSend) {
          sendWhatsAppMessage(phoneToSend, successMessage);
       }
-      sendWhatsAppMessage("827516821", ownerMessage);
+      sendWhatsAppMessage("8275116821", ownerMessage);
 
       // Silent Google Sheets Webhook
       try {
@@ -729,28 +746,15 @@ app.post(['/api/verify-payment', '/verify-payment'], authenticateToken, async (r
         const addressStr = webhookUserObj.address === "Not provided" ? "" : webhookUserObj.address;
 
         const sheetData = {
-          name: nameStr,
-          mobile: mobileStr,
-          email: emailStr,
-          address: addressStr,
-          selectedPlan: planName,
-          amountPaid: numericAmount,
-          planDate: planDate.toISOString(),
-          expiryDate: expiryDate.toISOString(),
-          
-          Name: nameStr,
-          Mobile: mobileStr,
+          "Name": nameStr,
           "Mobile Number": mobileStr,
-          Email: emailStr,
-          Address: addressStr,
-          Plan: planName,
+          "Email": emailStr,
+          "Full Address": addressStr,
           "Selected Plan": planName,
-          Amount: numericAmount,
-          "Amount Paid": numericAmount,
-          Date: planDate.toISOString(),
-          "Plan Start Date": planDate.toISOString(),
-          "Expiry date": expiryDate.toISOString(),
-          "expriy date Date": expiryDate.toISOString()
+          "Amount Paid": actualPaidAmount,
+          "Payment Status": "Completed",
+          "Registration Date": planDate.toISOString(),
+          "Expiry Date": expiryDate.toISOString()
         };
 
         fetch("https://script.google.com/macros/s/AKfycbymDzWgpjJQcgWateXiuCh9a-ZgcLSVETbP90EVyp8rlLzbJhrMEh57PoZQpG7mbb9c9A/exec", {

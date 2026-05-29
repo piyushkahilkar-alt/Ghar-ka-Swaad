@@ -32,6 +32,7 @@ export const verifyPayment = async (response: any, token: string, userStr: strin
     try {
         const renewal = new Date();
         renewal.setDate(renewal.getDate() + 30);
+        const numericAmount = parseFloat((plan.monthly_price || "0").toString().replace(/[^0-9.]/g, ''));
         const newSubInfo = {
             status: 'active',
             planName: plan.name || "Unknown Plan",
@@ -40,7 +41,9 @@ export const verifyPayment = async (response: any, token: string, userStr: strin
             startDate: new Date().toISOString(),
             renewalDate: renewal.toISOString(),
             expiryDate: renewal.toISOString(),
-            paymentId: response.razorpay_payment_id
+            paymentId: response.razorpay_payment_id,
+            amountPaid: numericAmount,
+            paymentStatus: 'success'
         };
         
         await setDoc(doc(db, "users", uid), {
@@ -48,7 +51,6 @@ export const verifyPayment = async (response: any, token: string, userStr: strin
             subscriptions: arrayUnion(newSubInfo)
         }, { merge: true });
         
-        const numericAmount = parseFloat((plan.monthly_price || "0").toString().replace(/[^0-9.]/g, ''));
         await setDoc(doc(db, "payments", response.razorpay_payment_id), {
             paymentId: response.razorpay_payment_id,
             orderId: response.razorpay_order_id,

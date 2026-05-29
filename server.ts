@@ -560,15 +560,32 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
       return res.status(400).json({ error: 'Signature mismatch. Payment verification failed.' });
     }
 
-    // Payment is verified, save directly in backend for speed.
-    const numericAmount = parseFloat((amount || "0").toString().replace(/[^0-9.]/g, ''));
+    // Payment is verified
+    let actualPaidAmount = parseFloat((amount || "0").toString().replace(/[^0-9.]/g, ''));
+    try {
+        let RazorpayClass = Razorpay;
+        if (typeof Razorpay !== "function" && (Razorpay as any).default) {
+           RazorpayClass = (Razorpay as any).default;
+        }
+        const rzp = new RazorpayClass({
+          key_id: "rzp_live_SuJKak8lep7KID",
+          key_secret: secret,
+        });
+        const paymentData = await rzp.payments.fetch(razorpay_payment_id);
+        if (paymentData && paymentData.amount) {
+            actualPaidAmount = Number(paymentData.amount) / 100;
+        }
+    } catch (fetchErr) {
+        console.error("Failed to fetch Razorpay payment:", fetchErr);
+    }
+
     if (adminDb && userId) {
       try {
         await adminDb.collection("payments").doc(razorpay_payment_id).set({
           paymentId: razorpay_payment_id,
           orderId: razorpay_order_id,
           userId: userId,
-          amount: numericAmount,
+          amount: actualPaidAmount,
           status: "success",
           plan: planName || "Unknown Plan",
           createdAt: FieldValue.serverTimestamp()
@@ -586,7 +603,7 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
             renewalDate: renewal.toISOString(),
             expiryDate: renewal.toISOString(),
             paymentId: razorpay_payment_id,
-            amountPaid: numericAmount,
+            amountPaid: actualPaidAmount,
             paymentStatus: 'success'
         };
         await adminDb.collection("users").doc(userId).set({
@@ -606,14 +623,13 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
         const user = await User.findById(actualUserId);
         if (user && user.phoneOrEmail) phoneToSend = user.phoneOrEmail;
       }
-      
-      const successMessage = `Hello, your payment of ₹${numericAmount} for the ${planName} plan was successful! Enjoy your subscription.`;
-      const ownerMessage = `[Admin Alert] User ${phoneToSend} (ID: ${actualUserId}) bought ${planName} for ₹${numericAmount}. Payment ID: ${razorpay_payment_id}`;
+        const successMessage = `Hello, your payment of ₹${actualPaidAmount} for the ${planName} plan was successful! Enjoy your subscription.`;
+      const ownerMessage = `[Admin Alert] User ${phoneToSend} (ID: ${actualUserId}) bought ${planName} for ₹${actualPaidAmount}. Payment ID: ${razorpay_payment_id}`;
       
       if (phoneToSend) {
          sendWhatsAppMessage(phoneToSend, successMessage);
       }
-      sendWhatsAppMessage("827516821", ownerMessage);
+      sendWhatsAppMessage("8275116821", ownerMessage);
 
       // Silent Google Sheets Webhook
       try {
@@ -663,7 +679,7 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
           "Email": emailStr,
           "Full Address": addressStr,
           "Selected Plan": planName,
-          "Amount Paid": numericAmount,
+          "Amount Paid": actualPaidAmount,
           "Payment Status": "Completed",
           "Registration Date": planDate.toISOString(),
           "Expiry Date": expiryDate.toISOString()
