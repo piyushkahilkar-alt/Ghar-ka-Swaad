@@ -8,7 +8,7 @@ import crypto from 'crypto';
 import Razorpay from 'razorpay';
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { sendWhatsAppMessage } from '../src/services/whatsapp';
+import { sendWhatsAppMessage } from '../src/services/whatsapp.js';
 
 dotenv.config();
 
@@ -20,8 +20,8 @@ try {
     });
     adminDb = getFirestore(adminApp);
   } else {
-    const adminApp = initializeApp();
-    adminDb = getFirestore(adminApp);
+    // Prevent hanging on default credentials in Vercel
+    console.log("No FIREBASE_SERVICE_ACCOUNT provided. Skipping Firebase Admin initialization.");
   }
 } catch (e) {
   console.log('Firebase admin not fully initialized (waiting for credentials).');
@@ -544,7 +544,22 @@ app.post(['/api/verify-payment', '/verify-payment'], authenticateToken, async (r
       // Silent Google Sheets Webhook
       try {
         let webhookUserObj = { name: "Not provided", email: "Not provided", address: "Not provided" };
-        if (adminDb && actualUserId) {
+        
+        try {
+           const localUser = await User.findById(actualUserId) || await User.findById(req.user?.id);
+           if (localUser) {
+               webhookUserObj = {
+                 name: localUser.name || "Not provided",
+                 email: localUser.phoneOrEmail || "Not provided", // often used as email
+                 address: [localUser.address, localUser.landmark, localUser.city].filter(Boolean).join(', ')
+               };
+               if (!phoneToSend || phoneToSend === "Customer") {
+                  phoneToSend = localUser.phoneOrEmail || "Not provided";
+               }
+           }
+        } catch (e) { console.error(e) }
+
+        if (adminDb && actualUserId && webhookUserObj.name === "Not provided") {
            const snap = await adminDb.collection("users").doc(actualUserId).get();
            if (snap.exists && snap.data()) {
                const data = snap.data();
