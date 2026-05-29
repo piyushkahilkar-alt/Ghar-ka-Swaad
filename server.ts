@@ -291,23 +291,30 @@ app.post('/api/register', async (req, res) => {
     
     // Silent Google Sheets Webhook Registration Sync
     try {
+        const addressJoined = [address, landmark, city].filter(Boolean).join(', ') || "";
         const sheetData = {
-          name: name || "Not provided",
-          mobile: phoneOrEmail || "Not provided",
-          email: phoneOrEmail || "Not provided",
-          address: [address, landmark, city].filter(Boolean).join(', ') || "Not provided",
+          name: name || "",
+          mobile: phoneOrEmail || "",
+          email: phoneOrEmail || "",
+          address: addressJoined,
           selectedPlan: "N/A (Just Registered)",
           amountPaid: 0,
           planDate: new Date().toISOString(),
           expiryDate: new Date().toISOString(),
-          Name: name || "Not provided",
-          Mobile: phoneOrEmail || "Not provided",
-          Email: phoneOrEmail || "Not provided",
-          Address: [address, landmark, city].filter(Boolean).join(', ') || "Not provided",
+          
+          Name: name || "",
+          Mobile: phoneOrEmail || "",
+          "Mobile Number": phoneOrEmail || "",
+          Email: phoneOrEmail || "",
+          Address: addressJoined,
           Plan: "N/A (Just Registered)",
+          "Selected Plan": "N/A (Just Registered)",
           Amount: 0,
+          "Amount Paid": 0,
           Date: new Date().toISOString(),
-          "Expiry date": new Date().toISOString()
+          "Plan Start Date": new Date().toISOString(),
+          "Expiry date": new Date().toISOString(),
+          "expriy date Date": new Date().toISOString()
         };
         fetch("https://script.google.com/macros/s/AKfycbymDzWgpjJQcgWateXiuCh9a-ZgcLSVETbP90EVyp8rlLzbJhrMEh57PoZQpG7mbb9c9A/exec", {
           method: "POST",
@@ -656,23 +663,34 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
         const expiryDate = new Date();
         expiryDate.setDate(planDate.getDate() + 30);
 
+        const nameStr = webhookUserObj.name === "Not provided" ? "" : webhookUserObj.name;
+        const mobileStr = phoneToSend === "Customer" ? "" : phoneToSend;
+        const emailStr = webhookUserObj.email === "Not provided" ? "" : webhookUserObj.email;
+        const addressStr = webhookUserObj.address === "Not provided" ? "" : webhookUserObj.address;
+
         const sheetData = {
-          name: webhookUserObj.name,
-          mobile: phoneToSend,
-          email: webhookUserObj.email,
-          address: webhookUserObj.address || "Not provided",
+          name: nameStr,
+          mobile: mobileStr,
+          email: emailStr,
+          address: addressStr,
           selectedPlan: planName,
           amountPaid: numericAmount,
           planDate: planDate.toISOString(),
           expiryDate: expiryDate.toISOString(),
-          Name: webhookUserObj.name,
-          Mobile: phoneToSend,
-          Email: webhookUserObj.email,
-          Address: webhookUserObj.address || "Not provided",
+          
+          Name: nameStr,
+          Mobile: mobileStr,
+          "Mobile Number": mobileStr,
+          Email: emailStr,
+          Address: addressStr,
           Plan: planName,
+          "Selected Plan": planName,
           Amount: numericAmount,
+          "Amount Paid": numericAmount,
           Date: planDate.toISOString(),
-          "Expiry date": expiryDate.toISOString()
+          "Plan Start Date": planDate.toISOString(),
+          "Expiry date": expiryDate.toISOString(),
+          "expriy date Date": expiryDate.toISOString()
         };
 
         fetch("https://script.google.com/macros/s/AKfycbymDzWgpjJQcgWateXiuCh9a-ZgcLSVETbP90EVyp8rlLzbJhrMEh57PoZQpG7mbb9c9A/exec", {
@@ -974,13 +992,13 @@ app.get('/api/admin/sync-sheets', async (req: any, res: any) => {
       }
     });
 
-    const syncedUsers = [];
     const webhookUrl = "https://script.google.com/macros/s/AKfycbymDzWgpjJQcgWateXiuCh9a-ZgcLSVETbP90EVyp8rlLzbJhrMEh57PoZQpG7mbb9c9A/exec";
+    const usersData = [];
 
     for (const doc of usersSnap.docs) {
        const data = doc.data();
        
-       let planName = data.subscription?.planName || data.selectedPlan || data.planName || data.plan || "Old Plan";
+       let planName = data.subscription?.planName || data.selectedPlan || data.planName || data.plan || "";
        let time = data.createdAt ? (typeof data.createdAt.toMillis === 'function' ? data.createdAt.toMillis() : new Date(data.createdAt).getTime()) : Date.now();
        if (isNaN(time)) time = Date.now();
        
@@ -990,31 +1008,49 @@ app.get('/api/admin/sync-sheets', async (req: any, res: any) => {
        const expiryDate = new Date(time);
        expiryDate.setDate(planDate.getDate() + 30);
        
-       const sheetData = {
-          name: data.name || data.displayName || data.fullName || "Not provided",
-          mobile: data.phone || data.phoneNumber || data.mobile || data.phoneOrEmail || "Not provided",
-          email: data.email || data.phoneOrEmail || "Not provided",
-          address: [data.address, data.landmark, data.city].filter(Boolean).join(', ') || "Not provided",
-          selectedPlan: planName,
-          amountPaid: amountPaid,
-          planDate: planDate.toISOString(),
-          expiryDate: (data.subscription?.expiryDate) ? new Date(data.subscription.expiryDate).toISOString() : expiryDate.toISOString(),
-          Name: data.name || data.displayName || data.fullName || "Not provided",
-          Mobile: data.phone || data.phoneNumber || data.mobile || data.phoneOrEmail || "Not provided",
-          Email: data.email || data.phoneOrEmail || "Not provided",
-          Address: [data.address, data.landmark, data.city].filter(Boolean).join(', ') || "Not provided",
+       const name = data.name || data.displayName || data.fullName || "";
+       const mobile = data.phone || data.phoneNumber || data.mobile || data.phoneOrEmail || "";
+       const email = data.email || data.phoneOrEmail || "";
+       const addressArr = [data.address, data.landmark, data.city].filter(Boolean);
+       const address = addressArr.join(', ') || "";
+       
+       if (!name && !mobile && !email) continue;
+       
+       const expiryDateString = (data.subscription?.expiryDate) ? new Date(data.subscription.expiryDate).toISOString() : expiryDate.toISOString();
+       
+       const sheetData: any = {
+          name, mobile, email, address, selectedPlan: planName, amountPaid,
+          planDate: planDate.toISOString(), 
+          expiryDate: expiryDateString,
+          
+          Name: name,
+          Mobile: mobile,
+          "Mobile Number": mobile,
+          Email: email,
+          Address: address,
           Plan: planName,
+          "Selected Plan": planName,
           Amount: amountPaid,
+          "Amount Paid": amountPaid,
           Date: planDate.toISOString(),
-          "Expiry date": (data.subscription?.expiryDate) ? new Date(data.subscription.expiryDate).toISOString() : expiryDate.toISOString()
+          "Plan Start Date": planDate.toISOString(),
+          "Expiry date": expiryDateString,
+          "expriy date Date": expiryDateString,
+          timestamp: time
        };
+       usersData.push(sheetData);
+    }
 
+    usersData.sort((a, b) => b.timestamp - a.timestamp);
+    const syncedUsers = [];
+    
+    for (const sheetData of usersData) {
+       delete sheetData.timestamp;
        fetch(webhookUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(sheetData)
-       }).catch(e => console.error("Sync Webhook failed for user", doc.id, e));
-       
+       }).catch(e => console.error("Sync Webhook failed", e));
        syncedUsers.push(sheetData);
     }
     
