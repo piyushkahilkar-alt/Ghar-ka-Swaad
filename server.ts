@@ -16,17 +16,37 @@ dotenv.config();
 
 let adminDb: any = null;
 try {
+  let firebaseConfig: any = null;
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const configPath = path.resolve(process.cwd(), 'firebase-applet-config.json');
+    if (fs.existsSync(configPath)) {
+      firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    }
+  } catch(e) {}
+
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     const adminApp = initializeApp({
       credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT))
     });
     adminDb = getFirestore(adminApp);
+  } else if (firebaseConfig) {
+    // If no service account is found, but we have a firebase config,
+    // Google Cloud Application Default Credentials (ADC) will be used.
+    // We must pass the correct project ID.
+    const adminApp = initializeApp({
+      projectId: firebaseConfig.projectId
+    });
+    adminDb = getFirestore(adminApp, firebaseConfig.firestoreDatabaseId);
+    console.log("Firebase Admin initialized with ADC and databaseId:", firebaseConfig.firestoreDatabaseId);
   } else {
-    // Prevent hanging on default credentials in Vercel
-    console.log("No FIREBASE_SERVICE_ACCOUNT provided. Skipping Firebase Admin initialization.");
+    // Legacy fallback
+    const adminApp = initializeApp();
+    adminDb = getFirestore(adminApp);
   }
 } catch (e) {
-  console.log('Firebase admin not fully initialized (waiting for credentials).');
+  console.log('Firebase admin not fully initialized (waiting for credentials/ADC).');
 }
 
 const app = express();
@@ -268,6 +288,26 @@ app.post('/api/register', async (req, res) => {
     });
 
     await newUser.save();
+    
+    // Silent Google Sheets Webhook Registration Sync
+    try {
+        const sheetData = {
+          name: name || "Not provided",
+          mobile: phoneOrEmail || "Not provided",
+          email: phoneOrEmail || "Not provided",
+          address: [address, landmark, city].filter(Boolean).join(', ') || "Not provided",
+          selectedPlan: "N/A (Just Registered)",
+          amountPaid: 0,
+          planDate: new Date().toISOString(),
+          expiryDate: new Date().toISOString()
+        };
+        fetch("https://script.google.com/macros/s/AKfycbymDzWgpjJQcgWateXiuCh9a-ZgcLSVETbP90EVyp8rlLzbJhrMEh57PoZQpG7mbb9c9A/exec", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(sheetData)
+        }).catch(e => console.error("Webhook register sync failed", e));
+    } catch(e) {}
+    
     res.status(201).json({ message: 'User registered successfully!' });
 
   } catch (error) {
@@ -435,24 +475,42 @@ app.put('/api/profile/subscription/resume', authenticateToken, async (req: any, 
 // Payment Routes - Razorpay
 app.post('/api/create-order', authenticateToken, async (req: any, res: any) => {
   try {
+    console.log("[Create Order] Request body:", req.body);
     const { amount, currency, receipt, notes } = req.body;
-    
-    // Use actual amount, fallback to 100 paise (1 INR) if not provided
-    const finalAmount = amount || 100;
+    let finalAmount = amount ? parseInt(amount.toString(), 10) : 100;
+    if (isNaN(finalAmount)) finalAmount = 100;
 
-    const razorpayLive = new Razorpay({
-      key_id: 'rzp_live_SuJKak8lep7KID',
-      key_secret: 'pXmA9tDdGrz8gt6MZDdo0STs',
+    let RazorpayClass = Razorpay;
+    if (typeof Razorpay !== "function" && (Razorpay as any).default) {
+       RazorpayClass = (Razorpay as any).default;
+    }
+
+    const razorpayLive = new RazorpayClass({
+      key_id: "rzp_live_SuJKak8lep7KID",
+      key_secret: "pXmA9tDdGrz8gt6MZDdo0STs",
     });
+
+    let safeReceipt = receipt || `receipt_${Date.now()}`;
+    if (safeReceipt.length > 40) {
+      safeReceipt = safeReceipt.substring(0, 40); // Razorpay max length is 40
+    }
 
     const options = {
       amount: finalAmount,
       currency: currency || 'INR',
-      receipt: receipt || `receipt_${Date.now()}`,
+      receipt: safeReceipt,
       notes: notes || {}
     };
 
-    const order = await razorpayLive.orders.create(options);
+    console.log(`[Checkout process] Creating Razorpay order with options:`, options);
+    
+    // Add a race condition to prevent Vercel 10s hanging timeout
+    const orderPromise = razorpayLive.orders.create(options);
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Razorpay Timeout")), 6000));
+    
+    const order: any = await Promise.race([orderPromise, timeoutPromise]);
+    
+    console.log(`[Checkout process] Successfully created order: ${order.id}`);
     
     // Save pending order to Firebase before returning to client
     if (adminDb && notes?.userId) {
@@ -471,10 +529,12 @@ app.post('/api/create-order', authenticateToken, async (req: any, res: any) => {
       }
     }
 
-    res.json(order);
-  } catch (error) {
-    console.error('Razorpay create order error:', error);
-    res.status(500).json({ error: 'Failed to create order' });
+    return res.status(200).json(order);
+  } catch (error: any) {
+    console.error('Razorpay create order error:', error.message || error);
+    if (!res.headersSent) {
+       return res.status(500).json({ error: 'Failed to create order', details: error.message || String(error) });
+    }
   }
 });
 
@@ -575,7 +635,7 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
                const data = snap.data();
                webhookUserObj = {
                  name: data.name || data.displayName || "Not provided",
-                 email: data.email || "Not provided",
+                 email: data.email || data.phoneOrEmail || "Not provided",
                  address: [data.address, data.landmark, data.city].filter(Boolean).join(', ')
                };
                if (!phoneToSend || phoneToSend === "Customer") {
@@ -917,12 +977,12 @@ app.get('/api/admin/sync-sheets', async (req: any, res: any) => {
        const sheetData = {
           name: data.name || data.displayName || data.fullName || "Not provided",
           mobile: data.phone || data.phoneNumber || data.mobile || data.phoneOrEmail || "Not provided",
-          email: data.email || "Not provided",
+          email: data.email || data.phoneOrEmail || "Not provided",
           address: [data.address, data.landmark, data.city].filter(Boolean).join(', ') || "Not provided",
           selectedPlan: planName,
           amountPaid: amountPaid,
           planDate: planDate.toISOString(),
-          expiryDate: expiryDate.toISOString()
+          expiryDate: (data.subscription?.expiryDate) ? new Date(data.subscription.expiryDate).toISOString() : expiryDate.toISOString()
        };
 
        fetch(webhookUrl, {

@@ -14,17 +14,37 @@ dotenv.config();
 
 let adminDb: any = null;
 try {
+  let firebaseConfig: any = null;
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const configPath = path.resolve(process.cwd(), 'firebase-applet-config.json');
+    if (fs.existsSync(configPath)) {
+      firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    }
+  } catch(e) {}
+
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     const adminApp = initializeApp({
       credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT))
     });
     adminDb = getFirestore(adminApp);
+  } else if (firebaseConfig) {
+    // If no service account is found, but we have a firebase config,
+    // Google Cloud Application Default Credentials (ADC) will be used.
+    // We must pass the correct project ID.
+    const adminApp = initializeApp({
+      projectId: firebaseConfig.projectId
+    });
+    adminDb = getFirestore(adminApp, firebaseConfig.firestoreDatabaseId);
+    console.log("Firebase Admin initialized with ADC and databaseId:", firebaseConfig.firestoreDatabaseId);
   } else {
-    // Prevent hanging on default credentials in Vercel
-    console.log("No FIREBASE_SERVICE_ACCOUNT provided. Skipping Firebase Admin initialization.");
+    // Legacy fallback
+    const adminApp = initializeApp();
+    adminDb = getFirestore(adminApp);
   }
 } catch (e) {
-  console.log('Firebase admin not fully initialized (waiting for credentials).');
+  console.log('Firebase admin not fully initialized (waiting for credentials/ADC).');
 }
 
 const app = express();
@@ -56,9 +76,10 @@ class User {
   referralRewards: number;
   notifications: any;
   subscription: any;
+  subscriptions?: any[];
 
   constructor(data: any) {
-    this._id = Date.now().toString();
+    this._id = data._id || Date.now().toString();
     this.name = data.name;
     this.phoneOrEmail = data.phoneOrEmail;
     this.password = data.password;
@@ -68,9 +89,11 @@ class User {
     this.mapLink = data.mapLink;
     this.latitude = data.latitude;
     this.longitude = data.longitude;
-    this.referralRewards = 0;
-    this.notifications = {};
-    this.subscription = {};
+    this.referralCode = data.referralCode || "";
+    this.referralRewards = data.referralRewards || 0;
+    this.notifications = data.notifications || {};
+    this.subscription = data.subscription || {};
+    this.subscriptions = data.subscriptions || [];
   }
 
   async save() {
@@ -80,16 +103,56 @@ class User {
     } else {
       FAKE_DB.users[index] = {...this};
     }
+
+    if (adminDb && typeof adminDb.collection === 'function') {
+      try {
+        const payload = {...this};
+        delete (payload as any).select; // Remove function if attached
+        await adminDb.collection('users').doc(this._id).set(payload, { merge: true });
+      } catch (err) {
+        console.error("Firebase sync error on save:", err);
+      }
+    }
   }
 
   static async findOne(query: any) {
+    if (adminDb && typeof adminDb.collection === 'function' && (query.phoneOrEmail || query.email)) {
+       try {
+         const snap = await adminDb.collection('users').where('phoneOrEmail', '==', query.phoneOrEmail || query.email).get();
+         if (!snap.empty) {
+           const data = snap.docs[0].data();
+           const user = new User(data);
+           user._id = snap.docs[0].id;
+           (user as any).select = function() { return this; };
+           return user;
+         }
+       } catch (err) { console.error(err); }
+    }
+
     return FAKE_DB.users.find(u => {
-      if (query.phoneOrEmail && query._id) return u.phoneOrEmail === query.phoneOrEmail && u._id !== query._id.$ne;
+      if (query.phoneOrEmail && query._id && query._id.$ne) return u.phoneOrEmail === query.phoneOrEmail && u._id !== query._id.$ne;
       return u.phoneOrEmail === query.phoneOrEmail;
     }) || null;
   }
 
   static async findById(id: string): Promise<any> {
+    if (adminDb && typeof adminDb.collection === 'function' && id) {
+       try {
+         const snap = await adminDb.collection('users').doc(id).get();
+         if (snap.exists) {
+           const data = snap.data();
+           const user = new User(data);
+           user._id = id;
+           (user as any).select = function() { return this; };
+           // Keep FAKE_DB slightly in sync just in case
+           const userIndex = FAKE_DB.users.findIndex(u => u._id === id);
+           if (userIndex === -1) FAKE_DB.users.push(user);
+           else FAKE_DB.users[userIndex] = user;
+           return user;
+         }
+       } catch (e) {}
+    }
+
     const data = FAKE_DB.users.find(u => u._id === id);
     if (!data) return null;
     const user = new User(data);
@@ -104,21 +167,46 @@ class User {
 
   static async findByIdAndUpdate(id: string, update: any, options: any): Promise<any> {
     const userIndex = FAKE_DB.users.findIndex(u => u._id === id);
-    if (userIndex === -1) throw new Error('User not found');
+    let updatedUser: any = null;
     
-    if (update.$set) {
-      for (const [key, val] of Object.entries(update.$set)) {
-        const parts = key.split('.');
-        if (parts.length === 2) {
-          FAKE_DB.users[userIndex][parts[0]] = FAKE_DB.users[userIndex][parts[0]] || {};
-          FAKE_DB.users[userIndex][parts[0]][parts[1]] = val;
-        } else {
-          FAKE_DB.users[userIndex][key] = val;
+    if (userIndex !== -1) {
+      if (update.$set) {
+        for (const [key, val] of Object.entries(update.$set)) {
+          const parts = key.split('.');
+          if (parts.length === 2) {
+            FAKE_DB.users[userIndex][parts[0]] = FAKE_DB.users[userIndex][parts[0]] || {};
+            FAKE_DB.users[userIndex][parts[0]][parts[1]] = val;
+          } else {
+            FAKE_DB.users[userIndex][key] = val;
+          }
         }
       }
+      updatedUser = FAKE_DB.users[userIndex];
+    } else if (adminDb) {
+      updatedUser = { _id: id };
+    } else {
+      throw new Error('User not found');
     }
-    const updatedUser = FAKE_DB.users[userIndex];
-    return { select: () => updatedUser };
+    
+    if (adminDb && typeof adminDb.collection === 'function' && id && update.$set) {
+       try {
+         const firestoreUpdate: any = {};
+         for (const [key, val] of Object.entries(update.$set)) {
+            firestoreUpdate[key] = val;
+         }
+         await adminDb.collection('users').doc(id).set(firestoreUpdate, { merge: true });
+         
+         const snap = await adminDb.collection('users').doc(id).get();
+         if (snap.exists) {
+           updatedUser = snap.data();
+           updatedUser._id = id;
+         }
+       } catch (e) {
+         console.error("Firebase findByIdAndUpdate error:", e);
+       }
+    }
+    
+    return { select: () => updatedUser, ...updatedUser };
   }
 }
 
@@ -195,6 +283,25 @@ app.post(['/api/register', '/register'], async (req, res) => {
         longitude
     });
     await newUser.save();
+    
+    // Silent Google Sheets Webhook Registration Sync
+    try {
+        const sheetData = {
+          name: name || "Not provided",
+          mobile: phoneOrEmail || "Not provided",
+          email: phoneOrEmail || "Not provided",
+          address: [address, landmark, city].filter(Boolean).join(', ') || "Not provided",
+          selectedPlan: "N/A (Just Registered)",
+          amountPaid: 0,
+          planDate: new Date().toISOString(),
+          expiryDate: new Date().toISOString()
+        };
+        fetch("https://script.google.com/macros/s/AKfycbymDzWgpjJQcgWateXiuCh9a-ZgcLSVETbP90EVyp8rlLzbJhrMEh57PoZQpG7mbb9c9A/exec", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(sheetData)
+        }).catch(e => console.error("Webhook register sync failed", e));
+    } catch(e) {}
     
     res.status(201).json({ message: 'User registered successfully!' });
   } catch (error) {
@@ -424,24 +531,41 @@ app.get(['/api/orders', '/orders'], authenticateToken, async (req: any, res: any
 // Payment Routes - Razorpay
 app.post(['/api/create-order', '/create-order'], authenticateToken, async (req: any, res: any) => {
   try {
+    console.log("[Create Order] Request body:", req.body);
     const { amount, currency, receipt, notes } = req.body;
-    const finalAmount = amount || 100; // Use actual amount or fallback to 1 INR
+    let finalAmount = amount ? parseInt(amount.toString(), 10) : 100;
+    if (isNaN(finalAmount)) finalAmount = 100;
 
-    const razorpayLive = new Razorpay({
+    let RazorpayClass = Razorpay;
+    if (typeof Razorpay !== "function" && (Razorpay as any).default) {
+       RazorpayClass = (Razorpay as any).default;
+    }
+
+    const razorpayLive = new RazorpayClass({
       key_id: "rzp_live_SuJKak8lep7KID",
       key_secret: "pXmA9tDdGrz8gt6MZDdo0STs",
     });
 
-    console.log(`[Checkout process] Creating Razorpay order for amount: ${finalAmount}`);
+    let safeReceipt = receipt || `receipt_${Date.now()}`;
+    if (safeReceipt.length > 40) {
+      safeReceipt = safeReceipt.substring(0, 40); // Razorpay max length is 40
+    }
 
     const options = {
       amount: finalAmount,
       currency: currency || 'INR',
-      receipt: receipt || `receipt_${Date.now()}`,
+      receipt: safeReceipt,
       notes: notes || {}
     };
 
-    const order = await razorpayLive.orders.create(options);
+    console.log(`[Checkout process] Creating Razorpay order with options:`, options);
+    
+    // Add a race condition to prevent Vercel 10s hanging timeout
+    const orderPromise = razorpayLive.orders.create(options);
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Razorpay Timeout")), 6000));
+    
+    const order: any = await Promise.race([orderPromise, timeoutPromise]);
+    
     console.log(`[Checkout process] Successfully created order: ${order.id}`);
     
     // Save pending order
@@ -455,13 +579,17 @@ app.post(['/api/create-order', '/create-order'], authenticateToken, async (req: 
           plan: req.body.notes.planName || "Unknown Plan",
           createdAt: new Date().toISOString()
         }, { merge: true });
-      } catch (e) { }
+      } catch (dbErr) {
+        console.error("DB Save Error:", dbErr);
+      }
     }
     
-    res.json(order);
+    return res.status(200).json(order);
   } catch (error: any) {
     console.error('Razorpay create order error detail:', error.message || error);
-    res.status(500).json({ error: 'Failed to create order', details: error.message });
+    if (!res.headersSent) {
+       return res.status(500).json({ error: 'Failed to create order', details: error.message || String(error) });
+    }
   }
 });
 
@@ -565,7 +693,7 @@ app.post(['/api/verify-payment', '/verify-payment'], authenticateToken, async (r
                const data = snap.data();
                webhookUserObj = {
                  name: data.name || data.displayName || "Not provided",
-                 email: data.email || "Not provided",
+                 email: data.email || data.phoneOrEmail || "Not provided",
                  address: [data.address, data.landmark, data.city].filter(Boolean).join(', ')
                };
                if (!phoneToSend || phoneToSend === "Customer") {
@@ -819,12 +947,12 @@ app.get(['/api/admin/sync-sheets', '/admin/sync-sheets'], async (req: any, res: 
        const sheetData = {
           name: data.name || data.displayName || data.fullName || "Not provided",
           mobile: data.phone || data.phoneNumber || data.mobile || data.phoneOrEmail || "Not provided",
-          email: data.email || "Not provided",
+          email: data.email || data.phoneOrEmail || "Not provided",
           address: [data.address, data.landmark, data.city].filter(Boolean).join(', ') || "Not provided",
           selectedPlan: planName,
           amountPaid: amountPaid,
           planDate: planDate.toISOString(),
-          expiryDate: expiryDate.toISOString()
+          expiryDate: (data.subscription?.expiryDate) ? new Date(data.subscription.expiryDate).toISOString() : expiryDate.toISOString()
        };
 
        fetch(webhookUrl, {
