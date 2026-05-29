@@ -656,7 +656,9 @@ app.post(['/api/verify-payment', '/verify-payment'], authenticateToken, async (r
             startDate: new Date().toISOString(),
             renewalDate: renewal.toISOString(),
             expiryDate: renewal.toISOString(),
-            paymentId: razorpay_payment_id
+            paymentId: razorpay_payment_id,
+            amountPaid: numericAmount,
+            paymentStatus: 'success'
         };
         await adminDb.collection("users").doc(userId).set({
           subscription: newSubInfo, // Legacy fallback
