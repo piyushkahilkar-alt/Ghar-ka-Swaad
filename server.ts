@@ -293,28 +293,15 @@ app.post('/api/register', async (req, res) => {
     try {
         const addressJoined = [address, landmark, city].filter(Boolean).join(', ') || "";
         const sheetData = {
-          name: name || "",
-          mobile: phoneOrEmail || "",
-          email: phoneOrEmail || "",
-          address: addressJoined,
-          selectedPlan: "N/A (Just Registered)",
-          amountPaid: 0,
-          planDate: new Date().toISOString(),
-          expiryDate: new Date().toISOString(),
-          
-          Name: name || "",
-          Mobile: phoneOrEmail || "",
+          "Name": name || "",
           "Mobile Number": phoneOrEmail || "",
-          Email: phoneOrEmail || "",
-          Address: addressJoined,
-          Plan: "N/A (Just Registered)",
+          "Email": phoneOrEmail || "",
+          "Full Address": addressJoined,
           "Selected Plan": "N/A (Just Registered)",
-          Amount: 0,
           "Amount Paid": 0,
-          Date: new Date().toISOString(),
-          "Plan Start Date": new Date().toISOString(),
-          "Expiry date": new Date().toISOString(),
-          "expriy date Date": new Date().toISOString()
+          "Payment Status": "Pending",
+          "Registration Date": new Date().toISOString(),
+          "Expiry Date": ""
         };
         fetch("https://script.google.com/macros/s/AKfycbymDzWgpjJQcgWateXiuCh9a-ZgcLSVETbP90EVyp8rlLzbJhrMEh57PoZQpG7mbb9c9A/exec", {
           method: "POST",
@@ -669,28 +656,15 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
         const addressStr = webhookUserObj.address === "Not provided" ? "" : webhookUserObj.address;
 
         const sheetData = {
-          name: nameStr,
-          mobile: mobileStr,
-          email: emailStr,
-          address: addressStr,
-          selectedPlan: planName,
-          amountPaid: numericAmount,
-          planDate: planDate.toISOString(),
-          expiryDate: expiryDate.toISOString(),
-          
-          Name: nameStr,
-          Mobile: mobileStr,
+          "Name": nameStr,
           "Mobile Number": mobileStr,
-          Email: emailStr,
-          Address: addressStr,
-          Plan: planName,
+          "Email": emailStr,
+          "Full Address": addressStr,
           "Selected Plan": planName,
-          Amount: numericAmount,
           "Amount Paid": numericAmount,
-          Date: planDate.toISOString(),
-          "Plan Start Date": planDate.toISOString(),
-          "Expiry date": expiryDate.toISOString(),
-          "expriy date Date": expiryDate.toISOString()
+          "Payment Status": "Completed",
+          "Registration Date": planDate.toISOString(),
+          "Expiry Date": expiryDate.toISOString()
         };
 
         fetch("https://script.google.com/macros/s/AKfycbymDzWgpjJQcgWateXiuCh9a-ZgcLSVETbP90EVyp8rlLzbJhrMEh57PoZQpG7mbb9c9A/exec", {
@@ -981,9 +955,10 @@ app.get('/api/admin/sync-sheets', async (req: any, res: any) => {
   try {
     if (!adminDb) return res.status(500).json({ error: "Firebase admin not initialized." });
     
-    const usersSnap = await adminDb.collection("users").get();
-    const paymentsSnap = await adminDb.collection("payments").get();
+    // Sort directly via Firestore query
+    const usersSnap = await adminDb.collection("users").orderBy("createdAt", "desc").get();
     
+    const paymentsSnap = await adminDb.collection("payments").get();
     const paymentsByUser: Record<string, number> = {};
     paymentsSnap.forEach((doc: any) => {
       const data = doc.data();
@@ -993,64 +968,50 @@ app.get('/api/admin/sync-sheets', async (req: any, res: any) => {
     });
 
     const webhookUrl = "https://script.google.com/macros/s/AKfycbymDzWgpjJQcgWateXiuCh9a-ZgcLSVETbP90EVyp8rlLzbJhrMEh57PoZQpG7mbb9c9A/exec";
-    const usersData = [];
+    const syncedUsers = [];
 
     for (const doc of usersSnap.docs) {
        const data = doc.data();
        
-       let planName = data.subscription?.planName || data.selectedPlan || data.planName || data.plan || "";
+       let planName = data.subscription?.selectedPlan || data.subscription?.planName || data.selectedPlan || data.planName || data.plan || "";
        let time = data.createdAt ? (typeof data.createdAt.toMillis === 'function' ? data.createdAt.toMillis() : new Date(data.createdAt).getTime()) : Date.now();
        if (isNaN(time)) time = Date.now();
        
-       let amountPaid = paymentsByUser[doc.id] || data.amount || data.paidAmount || data.amountPaid || 0;
+       let amountPaid = data.subscription?.amountPaid || paymentsByUser[doc.id] || data.amount || data.paidAmount || data.amountPaid || 0;
+       let paymentStatus = data.subscription?.paymentStatus || "Unknown";
        
        const planDate = new Date(time);
-       const expiryDate = new Date(time);
-       expiryDate.setDate(planDate.getDate() + 30);
+       const defaultExpiryDate = new Date(time);
+       defaultExpiryDate.setDate(planDate.getDate() + 30);
        
        const name = data.name || data.displayName || data.fullName || "";
        const mobile = data.phone || data.phoneNumber || data.mobile || data.phoneOrEmail || "";
        const email = data.email || data.phoneOrEmail || "";
-       const addressArr = [data.address, data.landmark, data.city].filter(Boolean);
+       const addressArr = [data.address, data.city, data.landmark].filter(Boolean);
        const address = addressArr.join(', ') || "";
        
        if (!name && !mobile && !email) continue;
        
-       const expiryDateString = (data.subscription?.expiryDate) ? new Date(data.subscription.expiryDate).toISOString() : expiryDate.toISOString();
+       const expiryDateString = (data.subscription?.expiryDate) ? new Date(data.subscription.expiryDate).toISOString() : defaultExpiryDate.toISOString();
        
-       const sheetData: any = {
-          name, mobile, email, address, selectedPlan: planName, amountPaid,
-          planDate: planDate.toISOString(), 
-          expiryDate: expiryDateString,
-          
-          Name: name,
-          Mobile: mobile,
+       const sheetData = {
+          "Name": name,
           "Mobile Number": mobile,
-          Email: email,
-          Address: address,
-          Plan: planName,
+          "Email": email,
+          "Full Address": address,
           "Selected Plan": planName,
-          Amount: amountPaid,
           "Amount Paid": amountPaid,
-          Date: planDate.toISOString(),
-          "Plan Start Date": planDate.toISOString(),
-          "Expiry date": expiryDateString,
-          "expriy date Date": expiryDateString,
-          timestamp: time
+          "Payment Status": paymentStatus,
+          "Registration Date": planDate.toISOString(),
+          "Expiry Date": expiryDateString
        };
-       usersData.push(sheetData);
-    }
 
-    usersData.sort((a, b) => b.timestamp - a.timestamp);
-    const syncedUsers = [];
-    
-    for (const sheetData of usersData) {
-       delete sheetData.timestamp;
        fetch(webhookUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(sheetData)
        }).catch(e => console.error("Sync Webhook failed", e));
+       
        syncedUsers.push(sheetData);
     }
     
