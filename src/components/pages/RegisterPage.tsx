@@ -15,6 +15,7 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
   const [landmark, setLandmark] = useState('');
   const [city, setCity] = useState('Nagpur');
   const [mapLink, setMapLink] = useState('');
+  const [userQuery, setUserQuery] = useState('');
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
 
@@ -39,6 +40,7 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
         landmark: landmark || '',
         city: city || 'Nagpur',
         mapLink: mapLink || '',
+        userQuery: userQuery || '',
         latitude: latitude || null,
         longitude: longitude || null
       };
@@ -51,14 +53,14 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
         try {
           const addressJoined = [address, landmark, city].filter(Boolean).join(', ');
           const sheetData = {
-            "Name": user.displayName || "",
-            "Mobile": user.phoneNumber || user.email || "",
-            "Email": user.email || "",
-            "Address": addressJoined || "",
-            "Plan": "N/A (Just Registered)",
-            "Amount": 0,
-            "Plan Date": new Date().toISOString(),
-            "Expiry date": new Date().toISOString()
+            "name": user.displayName || "",
+            "mobile": user.phoneNumber || user.email || "",
+            "email": user.email || "",
+            "address": addressJoined || "",
+            "plan": "N/A (Just Registered)",
+            "amount": 0,
+            "plan start date": new Date().toISOString(),
+            "plan end date": new Date().toISOString()
           };
           console.log("[DEBUG Frontend Google] Form submission: Sending webhook data", JSON.stringify(sheetData));
           fetch("https://script.google.com/macros/s/AKfycby7zusD7GvrXHdtZGXe4P8MlFBgAS8EsP-4ugJvGDl9B2JNVzW2nG7pc-yRl0XPpRJl6g/exec", {
@@ -142,6 +144,7 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
         landmark,
         city,
         mapLink,
+        userQuery,
         latitude,
         longitude
       };
@@ -157,14 +160,14 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
       try {
         const addressJoined = [address, landmark, city].filter(Boolean).join(', ');
         const sheetData = {
-          "Name": name || "",
-          "Mobile": phone || email || "",
-          "Email": email || "",
-          "Address": addressJoined || "",
-          "Plan": "N/A (Just Registered)",
-          "Amount": 0,
-          "Plan Date": new Date().toISOString(),
-          "Expiry date": new Date().toISOString()
+          "name": name || "",
+          "mobile": phone || email || "",
+          "email": email || "",
+          "address": addressJoined || "",
+          "plan": "N/A (Just Registered)",
+          "amount": 0,
+          "plan start date": new Date().toISOString(),
+          "plan end date": new Date().toISOString()
         };
         console.log("[DEBUG Frontend] Form submission: Sending webhook data", JSON.stringify(sheetData));
         fetch("https://script.google.com/macros/s/AKfycby7zusD7GvrXHdtZGXe4P8MlFBgAS8EsP-4ugJvGDl9B2JNVzW2nG7pc-yRl0XPpRJl6g/exec", {
@@ -379,6 +382,17 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
                   <option value="Nagpur">Nagpur</option>
                 </select>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Any query or special request? (Optional)</label>
+              <textarea 
+                rows={2}
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 transition-all shadow-sm resize-none"
+                placeholder="Allergies, preferences, or questions..."
+                value={userQuery}
+                onChange={(e) => setUserQuery(e.target.value)}
+              />
             </div>
 
             {otpSent && (

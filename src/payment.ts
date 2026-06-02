@@ -126,12 +126,13 @@ export const startPayment = async (
                     
                     const userObj = JSON.parse(userStr);
                     const whatsappMsg = `*New Subscription Alert!*\n\n` +
-                      `*Name:* ${userObj.name || userObj.displayName || 'Not provided'}\n` +
-                      `*Mobile Number:* ${userObj.phone || userObj.phoneNumber || 'Not provided'}\n` +
-                      `*Email:* ${userObj.email || 'Not provided'}\n` +
+                      `*Name:* ${userObj.name || userObj.displayName || ''}\n` +
+                      `*Mobile Number:* ${userObj.phone || userObj.phoneNumber || ''}\n` +
+                      `*Email:* ${userObj.email || ''}\n` +
                       `*Address:* ${[userObj.address, userObj.landmark, userObj.city].filter(Boolean).join(', ')}\n` +
                       `*Selected Plan:* ${plan.name}\n` +
-                      `*Amount Paid:* ₹${plan.monthly_price}\n\n` +
+                      `*Amount Paid:* ₹${plan.monthly_price}\n` +
+                      `*Query:* ${userObj.userQuery || 'None'}\n\n` +
                       `*Payment ID:* ${finalResponse.razorpay_payment_id}`;
                       
                     setTimeout(() => {

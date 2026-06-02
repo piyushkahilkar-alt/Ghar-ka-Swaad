@@ -486,7 +486,11 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
               
               {userData?.subscriptions && userData.subscriptions.length > 0 ? (
                 <div className="space-y-4">
-                  {userData.subscriptions.map((sub: any, idx: number) => (
+                  {userData.subscriptions
+                    .filter((sub: any, index: number, self: any[]) => 
+                       index === self.findIndex((t) => t.planName === sub.planName && t.status === sub.status)
+                    )
+                    .map((sub: any, idx: number) => (
                     <div key={idx} className="flex flex-col gap-3 p-4 border border-gray-100 rounded-2xl bg-gray-50/50">
                         <div className="flex items-center justify-center gap-2 text-brand-dark font-bold bg-brand-secondary/50 py-2 rounded-xl border border-brand-primary/20">
                           <Package size={18} /> {sub.planName}

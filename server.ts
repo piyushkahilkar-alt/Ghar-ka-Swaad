@@ -313,14 +313,14 @@ app.post('/api/register', async (req, res) => {
     try {
         const addressJoined = [address, landmark, city].filter(Boolean).join(', ') || "";
         const sheetData = {
-          "Name": name || "",
-          "Mobile": phoneOrEmail || "",
-          "Email": phoneOrEmail || "",
-          "Address": addressJoined,
-          "Plan": "N/A (Just Registered)",
-          "Amount": 0,
-          "Plan Date": new Date().toISOString(),
-          "Expiry date": new Date().toISOString()
+          "name": name || "",
+          "mobile": phoneOrEmail || "",
+          "email": phoneOrEmail || "",
+          "address": addressJoined,
+          "plan": "N/A (Just Registered)",
+          "amount": 0,
+          "plan start date": new Date().toISOString(),
+          "plan end date": new Date().toISOString()
         };
         console.log("[DEBUG] Webhook Request data (Register):", JSON.stringify(sheetData));
         fetch("https://script.google.com/macros/s/AKfycby7zusD7GvrXHdtZGXe4P8MlFBgAS8EsP-4ugJvGDl9B2JNVzW2nG7pc-yRl0XPpRJl6g/exec", {
@@ -700,14 +700,14 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
         const addressStr = webhookUserObj.address;
 
         const sheetData = {
-          "Name": nameStr,
-          "Mobile": mobileStr,
-          "Email": emailStr,
-          "Address": addressStr,
-          "Plan": planName,
-          "Amount": actualPaidAmount,
-          "Plan Date": planDate.toISOString(),
-          "Expiry date": expiryDate.toISOString()
+          "name": nameStr,
+          "mobile": mobileStr,
+          "email": emailStr,
+          "address": addressStr,
+          "plan": planName,
+          "amount": actualPaidAmount,
+          "plan start date": planDate.toISOString(),
+          "plan end date": expiryDate.toISOString()
         };
         console.log("[DEBUG] Webhook Request data (Payment):", JSON.stringify(sheetData));
 
@@ -1045,14 +1045,14 @@ app.get('/api/admin/sync-sheets', async (req: any, res: any) => {
        const expiryDateString = (data.subscription?.expiryDate) ? new Date(data.subscription.expiryDate).toISOString() : defaultExpiryDate.toISOString();
        
        const sheetData = {
-          "Name": name,
-          "Mobile": mobile,
-          "Email": email,
-          "Address": address,
-          "Plan": planName,
-          "Amount": amountPaid,
-          "Plan Date": planDate.toISOString(),
-          "Expiry date": expiryDateString
+          "name": name,
+          "mobile": mobile,
+          "email": email,
+          "address": address,
+          "plan": planName,
+          "amount": amountPaid,
+          "plan start date": planDate.toISOString(),
+          "plan end date": expiryDateString
        };
 
        console.log("[DEBUG] Webhook Request data (Sync):", JSON.stringify(sheetData));

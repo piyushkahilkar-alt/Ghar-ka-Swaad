@@ -288,14 +288,14 @@ app.post(['/api/register', '/register'], async (req, res) => {
     try {
         const addressJoined = [address, landmark, city].filter(Boolean).join(', ') || "";
         const sheetData = {
-          "Name": name || "",
-          "Mobile": phoneOrEmail || "",
-          "Email": phoneOrEmail || "",
-          "Address": addressJoined,
-          "Plan": "N/A (Just Registered)",
-          "Amount": 0,
-          "Plan Date": new Date().toISOString(),
-          "Expiry date": new Date().toISOString()
+          "name": name || "",
+          "mobile": phoneOrEmail || "",
+          "email": phoneOrEmail || "",
+          "address": addressJoined,
+          "plan": "N/A (Just Registered)",
+          "amount": 0,
+          "plan start date": new Date().toISOString(),
+          "plan end date": new Date().toISOString()
         };
         fetch("https://script.google.com/macros/s/AKfycby7zusD7GvrXHdtZGXe4P8MlFBgAS8EsP-4ugJvGDl9B2JNVzW2nG7pc-yRl0XPpRJl6g/exec", {
           method: "POST",
@@ -732,14 +732,14 @@ app.post(['/api/verify-payment', '/verify-payment'], authenticateToken, async (r
         const addressStr = webhookUserObj.address;
 
         const sheetData = {
-          "Name": nameStr,
-          "Mobile": mobileStr,
-          "Email": emailStr,
-          "Address": addressStr,
-          "Plan": planName,
-          "Amount": actualPaidAmount,
-          "Plan Date": planDate.toISOString(),
-          "Expiry date": expiryDate.toISOString()
+          "name": nameStr,
+          "mobile": mobileStr,
+          "email": emailStr,
+          "address": addressStr,
+          "plan": planName,
+          "amount": actualPaidAmount,
+          "plan start date": planDate.toISOString(),
+          "plan end date": expiryDate.toISOString()
         };
 
         fetch("https://script.google.com/macros/s/AKfycby7zusD7GvrXHdtZGXe4P8MlFBgAS8EsP-4ugJvGDl9B2JNVzW2nG7pc-yRl0XPpRJl6g/exec", {
