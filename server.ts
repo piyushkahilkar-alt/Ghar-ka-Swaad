@@ -90,6 +90,7 @@ class User {
   mapLink?: string;
   latitude?: number;
   longitude?: number;
+  userQuery?: string;
   referralCode?: string;
   referralRewards: number;
   notifications: any;
@@ -106,6 +107,7 @@ class User {
     this.mapLink = data.mapLink;
     this.latitude = data.latitude;
     this.longitude = data.longitude;
+    this.userQuery = data.userQuery;
     this.referralRewards = 0;
     this.notifications = {};
     this.subscription = {};
@@ -277,7 +279,7 @@ app.post('/api/send-otp', async (req, res) => {
 // 1. Register User
 app.post('/api/register', async (req, res) => {
   try {
-    const { name, phoneOrEmail, password, address, landmark, city, mapLink } = req.body;
+    const { name, phoneOrEmail, password, address, landmark, city, mapLink, userQuery } = req.body;
 
     // Basic Validation
     if (!name || !phoneOrEmail || !password) {
@@ -304,7 +306,8 @@ app.post('/api/register', async (req, res) => {
       address,
       landmark,
       city,
-      mapLink
+      mapLink,
+      userQuery
     });
 
     await newUser.save();
@@ -314,13 +317,11 @@ app.post('/api/register', async (req, res) => {
         const addressJoined = [address, landmark, city].filter(Boolean).join(', ') || "";
         const sheetData = {
           "name": name || "",
-          "mobile": phoneOrEmail || "",
-          "email": phoneOrEmail || "",
-          "address": addressJoined,
+          "mobile no": phoneOrEmail || "",
+          "location": addressJoined,
           "plan": "N/A (Just Registered)",
-          "amount": 0,
-          "plan start date": new Date().toISOString(),
-          "plan end date": new Date().toISOString()
+          "amount paid": 0,
+          "query": userQuery || ""
         };
         console.log("[DEBUG] Webhook Request data (Register):", JSON.stringify(sheetData));
         fetch("https://script.google.com/macros/s/AKfycby7zusD7GvrXHdtZGXe4P8MlFBgAS8EsP-4ugJvGDl9B2JNVzW2nG7pc-yRl0XPpRJl6g/exec", {
@@ -659,7 +660,7 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
 
       // Silent Google Sheets Webhook
       try {
-        let webhookUserObj = { name: "", email: "", address: "" };
+        let webhookUserObj = { name: "", email: "", address: "", userQuery: "" };
         
         try {
            const localUser = await User.findById(actualUserId) || await User.findById(req.user?.id);
@@ -667,7 +668,8 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
                webhookUserObj = {
                  name: localUser.name || "",
                  email: localUser.phoneOrEmail || "", // often used as email
-                 address: [localUser.address, localUser.landmark, localUser.city].filter(Boolean).join(', ')
+                 address: [localUser.address, localUser.landmark, localUser.city].filter(Boolean).join(', '),
+                 userQuery: localUser.userQuery || ""
                };
                if (!phoneToSend || phoneToSend === "Customer") {
                   phoneToSend = localUser.phoneOrEmail || "";
@@ -682,7 +684,8 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
                webhookUserObj = {
                  name: data.name || data.displayName || "",
                  email: data.email || data.phoneOrEmail || "",
-                 address: [data.address, data.landmark, data.city].filter(Boolean).join(', ')
+                 address: [data.address, data.landmark, data.city].filter(Boolean).join(', '),
+                 userQuery: data.userQuery || ""
                };
                if (!phoneToSend || phoneToSend === "Customer") {
                   phoneToSend = data.phone || data.phoneNumber || "";
@@ -700,14 +703,12 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
         const addressStr = webhookUserObj.address;
 
         const sheetData = {
-          "name": nameStr,
-          "mobile": mobileStr,
-          "email": emailStr,
-          "address": addressStr,
+          "name": nameStr || "",
+          "mobile no": mobileStr || "",
+          "location": addressStr || "",
           "plan": planName,
-          "amount": actualPaidAmount,
-          "plan start date": planDate.toISOString(),
-          "plan end date": expiryDate.toISOString()
+          "amount paid": actualPaidAmount,
+          "query": (webhookUserObj as any).userQuery || ""
         };
         console.log("[DEBUG] Webhook Request data (Payment):", JSON.stringify(sheetData));
 
@@ -1046,13 +1047,11 @@ app.get('/api/admin/sync-sheets', async (req: any, res: any) => {
        
        const sheetData = {
           "name": name,
-          "mobile": mobile,
-          "email": email,
-          "address": address,
+          "mobile no": mobile,
+          "location": address,
           "plan": planName,
-          "amount": amountPaid,
-          "plan start date": planDate.toISOString(),
-          "plan end date": expiryDateString
+          "amount paid": amountPaid,
+          "query": data.userQuery || ""
        };
 
        console.log("[DEBUG] Webhook Request data (Sync):", JSON.stringify(sheetData));

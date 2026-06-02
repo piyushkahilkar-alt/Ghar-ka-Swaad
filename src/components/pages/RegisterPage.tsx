@@ -54,13 +54,11 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
           const addressJoined = [address, landmark, city].filter(Boolean).join(', ');
           const sheetData = {
             "name": user.displayName || "",
-            "mobile": user.phoneNumber || user.email || "",
-            "email": user.email || "",
-            "address": addressJoined || "",
+            "mobile no": user.phoneNumber || user.email || "",
+            "location": addressJoined || "",
             "plan": "N/A (Just Registered)",
-            "amount": 0,
-            "plan start date": new Date().toISOString(),
-            "plan end date": new Date().toISOString()
+            "amount paid": 0,
+            "query": userQuery || ""
           };
           console.log("[DEBUG Frontend Google] Form submission: Sending webhook data", JSON.stringify(sheetData));
           fetch("https://script.google.com/macros/s/AKfycby7zusD7GvrXHdtZGXe4P8MlFBgAS8EsP-4ugJvGDl9B2JNVzW2nG7pc-yRl0XPpRJl6g/exec", {
@@ -161,13 +159,11 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
         const addressJoined = [address, landmark, city].filter(Boolean).join(', ');
         const sheetData = {
           "name": name || "",
-          "mobile": phone || email || "",
-          "email": email || "",
-          "address": addressJoined || "",
+          "mobile no": phone || email || "",
+          "location": addressJoined || "",
           "plan": "N/A (Just Registered)",
-          "amount": 0,
-          "plan start date": new Date().toISOString(),
-          "plan end date": new Date().toISOString()
+          "amount paid": 0,
+          "query": userQuery || ""
         };
         console.log("[DEBUG Frontend] Form submission: Sending webhook data", JSON.stringify(sheetData));
         fetch("https://script.google.com/macros/s/AKfycby7zusD7GvrXHdtZGXe4P8MlFBgAS8EsP-4ugJvGDl9B2JNVzW2nG7pc-yRl0XPpRJl6g/exec", {

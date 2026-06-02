@@ -72,6 +72,7 @@ class User {
   mapLink?: string;
   latitude?: number;
   longitude?: number;
+  userQuery?: string;
   referralCode?: string;
   referralRewards: number;
   notifications: any;
@@ -89,6 +90,7 @@ class User {
     this.mapLink = data.mapLink;
     this.latitude = data.latitude;
     this.longitude = data.longitude;
+    this.userQuery = data.userQuery;
     this.referralCode = data.referralCode || "";
     this.referralRewards = data.referralRewards || 0;
     this.notifications = data.notifications || {};
@@ -254,7 +256,7 @@ app.post(['/api/send-otp', '/send-otp'], async (req, res) => {
 
 app.post(['/api/register', '/register'], async (req, res) => {
   try {
-    const { name, phoneOrEmail, password, address, landmark, city, mapLink, latitude, longitude } = req.body;
+    const { name, phoneOrEmail, password, address, landmark, city, mapLink, latitude, longitude, userQuery } = req.body;
 
     if (!name || !phoneOrEmail || !password) {
       return res.status(400).json({ error: 'All fields are required' });
@@ -280,7 +282,8 @@ app.post(['/api/register', '/register'], async (req, res) => {
         city,
         mapLink,
         latitude,
-        longitude
+        longitude,
+        userQuery
     });
     await newUser.save();
     
@@ -289,13 +292,11 @@ app.post(['/api/register', '/register'], async (req, res) => {
         const addressJoined = [address, landmark, city].filter(Boolean).join(', ') || "";
         const sheetData = {
           "name": name || "",
-          "mobile": phoneOrEmail || "",
-          "email": phoneOrEmail || "",
-          "address": addressJoined,
+          "mobile no": phoneOrEmail || "",
+          "location": addressJoined,
           "plan": "N/A (Just Registered)",
-          "amount": 0,
-          "plan start date": new Date().toISOString(),
-          "plan end date": new Date().toISOString()
+          "amount paid": 0,
+          "query": userQuery || ""
         };
         fetch("https://script.google.com/macros/s/AKfycby7zusD7GvrXHdtZGXe4P8MlFBgAS8EsP-4ugJvGDl9B2JNVzW2nG7pc-yRl0XPpRJl6g/exec", {
           method: "POST",
@@ -691,7 +692,7 @@ app.post(['/api/verify-payment', '/verify-payment'], authenticateToken, async (r
 
       // Silent Google Sheets Webhook
       try {
-        let webhookUserObj = { name: "", email: "", address: "" };
+        let webhookUserObj = { name: "", email: "", address: "", userQuery: "" };
         
         try {
            const localUser = await User.findById(actualUserId) || await User.findById(req.user?.id);
@@ -699,7 +700,8 @@ app.post(['/api/verify-payment', '/verify-payment'], authenticateToken, async (r
                webhookUserObj = {
                  name: localUser.name || "",
                  email: localUser.phoneOrEmail || "", // often used as email
-                 address: [localUser.address, localUser.landmark, localUser.city].filter(Boolean).join(', ')
+                 address: [localUser.address, localUser.landmark, localUser.city].filter(Boolean).join(', '),
+                 userQuery: localUser.userQuery || ""
                };
                if (!phoneToSend || phoneToSend === "Customer") {
                   phoneToSend = localUser.phoneOrEmail || "";
@@ -714,7 +716,8 @@ app.post(['/api/verify-payment', '/verify-payment'], authenticateToken, async (r
                webhookUserObj = {
                  name: data.name || data.displayName || "",
                  email: data.email || data.phoneOrEmail || "",
-                 address: [data.address, data.landmark, data.city].filter(Boolean).join(', ')
+                 address: [data.address, data.landmark, data.city].filter(Boolean).join(', '),
+                 userQuery: data.userQuery || ""
                };
                if (!phoneToSend || phoneToSend === "Customer") {
                   phoneToSend = data.phone || data.phoneNumber || "";
@@ -732,14 +735,12 @@ app.post(['/api/verify-payment', '/verify-payment'], authenticateToken, async (r
         const addressStr = webhookUserObj.address;
 
         const sheetData = {
-          "name": nameStr,
-          "mobile": mobileStr,
-          "email": emailStr,
-          "address": addressStr,
+          "name": nameStr || "",
+          "mobile no": mobileStr || "",
+          "location": addressStr || "",
           "plan": planName,
-          "amount": actualPaidAmount,
-          "plan start date": planDate.toISOString(),
-          "plan end date": expiryDate.toISOString()
+          "amount paid": actualPaidAmount,
+          "query": (webhookUserObj as any).userQuery || ""
         };
 
         fetch("https://script.google.com/macros/s/AKfycby7zusD7GvrXHdtZGXe4P8MlFBgAS8EsP-4ugJvGDl9B2JNVzW2nG7pc-yRl0XPpRJl6g/exec", {

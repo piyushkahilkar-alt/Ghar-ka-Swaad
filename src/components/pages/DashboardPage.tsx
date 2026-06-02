@@ -54,7 +54,10 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
         
         let localHistory: any[] = [];
         if (localUser?.subscriptions && localUser.subscriptions.length > 0) {
-            localHistory = localUser.subscriptions.map((sub: any, i: number) => ({ id: i + 1, date: new Date().toISOString().split('T')[0], meal: sub.planName, status: 'Out for Delivery' }));
+            const uniqueSubs = localUser.subscriptions.filter((sub: any, index: number, self: any[]) =>
+                index === self.findIndex((t) => t.planName === sub.planName)
+            );
+            localHistory = uniqueSubs.map((sub: any, i: number) => ({ id: i + 1, date: new Date().toISOString().split('T')[0], meal: sub.planName, status: 'Out for Delivery' }));
         } else if (localUser?.subscription?.planName) {
             localHistory = [{ id: 1, date: new Date().toISOString().split('T')[0], meal: localUser.subscription.planName, status: 'Out for Delivery' }];
         }
@@ -112,7 +115,10 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
 
           let freshHistory: any[] = [];
           if (freshUser?.subscriptions && freshUser.subscriptions.length > 0) {
-              freshHistory = freshUser.subscriptions.map((sub: any, i: number) => ({ id: i + 1, date: new Date().toISOString().split('T')[0], meal: sub.planName, status: 'Out for Delivery' }));
+              const uniqueSubs = freshUser.subscriptions.filter((sub: any, index: number, self: any[]) =>
+                  index === self.findIndex((t) => t.planName === sub.planName)
+              );
+              freshHistory = uniqueSubs.map((sub: any, i: number) => ({ id: i + 1, date: new Date().toISOString().split('T')[0], meal: sub.planName, status: 'Out for Delivery' }));
           } else if (freshUser?.subscription?.planName) {
               freshHistory = [{ id: 1, date: new Date().toISOString().split('T')[0], meal: freshUser.subscription.planName, status: 'Out for Delivery' }];
           }
@@ -139,7 +145,10 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
                   const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
                   return timeB - timeA;
               });
-              setPaymentHistory(paymentsList);
+              const uniquePayments = paymentsList.filter((payment: any, index: number, self: any[]) =>
+                  index === self.findIndex((t) => t.plan === payment.plan)
+              );
+              setPaymentHistory(uniquePayments);
           } catch(paymentErr) {
               console.error("Error fetching payments", paymentErr);
           }
