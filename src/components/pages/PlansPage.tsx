@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BRAND_DATA } from '../../constants';
 import { motion, AnimatePresence } from 'motion/react';
-import { Check, Zap, Rocket, Star, Utensils, Leaf, X } from 'lucide-react';
-import QRCode from 'react-qr-code';
-import { startPayment } from '../../payment';
+import { Check, Zap, Rocket, Star, Utensils, Leaf, X, Copy, UploadCloud, CheckCircle2 } from 'lucide-react';
+import { db } from '../../firebase';
+import { doc, setDoc, arrayUnion } from 'firebase/firestore';
+import toast from 'react-hot-toast';
 import { useSEO } from '../../utils/useSEO';
 
 export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => void }) {
@@ -54,6 +55,27 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
   const [isProcessingInfo, setIsProcessingInfo] = useState('');
 
   const [customAmount, setCustomAmount] = useState<number | ''>('');
+  
+  // Custom UPI QR Payment states
+  const [countdown, setCountdown] = useState(300);
+  const [paymentScreenshot, setPaymentScreenshot] = useState<string | null>(null);
+  const [transactionId, setTransactionId] = useState('');
+
+  useEffect(() => {
+    if (checkoutStep === 2) {
+      setCountdown(300);
+      const timer = setInterval(() => {
+        setCountdown((prev) => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [checkoutStep]);
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
 
   const initiatePayment = (plan: any) => {
     setSelectedPlan(plan);
@@ -63,64 +85,154 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
 
   const handleProceedToPayment = async () => {
     if (!customAmount || customAmount <= 0) {
-        alert("Please enter a valid amount.");
+        toast.error("Please enter a valid amount.");
         return;
     }
-
-    const planWithCustomAmount = { ...selectedPlan, monthly_price: customAmount };
-    
-    setCheckoutStep(2); // Initial payment step (now starts Razorpay process)
 
     const userStr = localStorage.getItem('user');
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
 
     if (!userStr || !token) {
-        alert("Please login first to subscribe.");
+        toast.error("Please login first to subscribe.");
         if (onNavigate) onNavigate('login');
         return;
     }
 
-    startPayment(
-        planWithCustomAmount, 
-        userStr, 
-        token, 
-        (status) => {
-            setIsProcessingInfo(status);
-            if (status.includes('Verifying') || status.includes('Saving') || status.includes('Activating')) {
-                setCheckoutStep(3); // Show Verifying state
-            }
-        },
-        (paymentId) => {
-            setCheckoutStep(4); // Success step
-            // Update local storage so dashboard has newest subscription immediately
-            const updatedUser = JSON.parse(userStr);
-            const expiryDate = new Date();
-            expiryDate.setDate(expiryDate.getDate() + 30);
-            
-            updatedUser.subscription = {
-                planId: planWithCustomAmount.id.toString(),
-                planName: planWithCustomAmount.name,
-                isPaused: false,
-                expiryDate: expiryDate.toISOString()
-            };
-            
-            if (sessionStorage.getItem('user')) {
-                sessionStorage.setItem('user', JSON.stringify(updatedUser));
-            } else {
-                localStorage.setItem('user', JSON.stringify(updatedUser));
-            }
+    setCheckoutStep(2); // Show QR Code Screen
+  };
 
-            setTimeout(() => {
-                 if (onNavigate) onNavigate('dashboard');
-            }, 3000);
-        },
-        (error) => {
-            console.error('Payment Error:', error);
-            alert(error.message);
-            setCheckoutStep(1); // Go back to default/failed state
-            // Keep selectedPlan so they can try again
+  const handleImageUpload = (e: any) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+       const img = new Image();
+       img.onload = () => {
+           const canvas = document.createElement('canvas');
+           const MAX_WIDTH = 800;
+           const MAX_HEIGHT = 800;
+           let width = img.width;
+           let height = img.height;
+           
+           if (width > height) {
+               if (width > MAX_WIDTH) {
+                   height *= MAX_WIDTH / width;
+                   width = MAX_WIDTH;
+               }
+           } else {
+               if (height > MAX_HEIGHT) {
+                   width *= MAX_HEIGHT / height;
+                   height = MAX_HEIGHT;
+               }
+           }
+           canvas.width = width;
+           canvas.height = height;
+           const ctx = canvas.getContext('2d');
+           if (ctx) {
+             ctx.drawImage(img, 0, 0, width, height);
+             const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+             setPaymentScreenshot(dataUrl);
+           }
+       };
+       img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFinalSubmit = async () => {
+    if (!paymentScreenshot) {
+        toast.error("Please upload payment screenshot.");
+        return;
+    }
+    setCheckoutStep(3); // Saving step
+    setIsProcessingInfo('Verifying and saving your payment...');
+    try {
+        const userStr = localStorage.getItem('user');
+        if (!userStr) throw new Error("User not found");
+        const userObj = JSON.parse(userStr);
+        const uid = userObj.uid;
+        const planWithCustomAmount = { ...selectedPlan, monthly_price: customAmount };
+
+        const paymentId = `pay_${Date.now()}`;
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + 30);
+        
+        const newSubInfo = {
+           status: 'active',
+           planName: planWithCustomAmount.name,
+           planId: planWithCustomAmount.id.toString(),
+           isPaused: false,
+           startDate: new Date().toISOString(),
+           renewalDate: expiryDate.toISOString(),
+           expiryDate: expiryDate.toISOString(),
+           paymentId: paymentId,
+           amountPaid: customAmount,
+           paymentStatus: 'Pending Verification',
+           screenshot: paymentScreenshot,
+           transactionId: transactionId
+        };
+
+        // Save to Firestore payments collection
+        await setDoc(doc(db, "payments", paymentId), {
+            paymentId: paymentId,
+            orderId: `order_${Date.now()}`,
+            userId: uid,
+            amount: customAmount,
+            status: "Pending Verification",
+            plan: planWithCustomAmount.name,
+            createdAt: new Date().toISOString(),
+            screenshot: paymentScreenshot,
+            transactionId: transactionId
+        });
+
+        // Save to Users collection
+        await setDoc(doc(db, "users", uid), {
+            subscription: newSubInfo, // Legacy fallback
+            subscriptions: arrayUnion(newSubInfo)
+        }, { merge: true });
+
+        // Send to Google Sheets Webhook
+        const addressJoined = [userObj.address, userObj.landmark, userObj.city].filter(Boolean).join(', ');
+        const sheetData = {
+            "name": userObj.name || userObj.displayName || "",
+            "mobile no": userObj.phone || userObj.phoneNumber || userObj.email || "",
+            "location": addressJoined || "",
+            "plan": planWithCustomAmount.name,
+            "amount paid": customAmount,
+            "query": userObj.userQuery || ""
+        };
+        fetch("https://script.google.com/macros/s/AKfycby7zusD7GvrXHdtZGXe4P8MlFBgAS8EsP-4ugJvGDl9B2JNVzW2nG7pc-yRl0XPpRJl6g/exec", {
+           method: "POST",
+           headers: { "Content-Type": "application/json" },
+           body: JSON.stringify(sheetData)
+        }).catch(err => console.error("Webhook error: ", err));
+
+        // Update local state
+        const updatedUser = { ...userObj, subscription: newSubInfo };
+        if (sessionStorage.getItem('user')) {
+            sessionStorage.setItem('user', JSON.stringify(updatedUser));
+        } else {
+            localStorage.setItem('user', JSON.stringify(updatedUser));
         }
-    );
+
+        setCheckoutStep(4); // Success
+
+        const whatsappMsg = `Hello Ghar Ka Swaad,\n\nI have completed payment.\nName: ${sheetData.name}\nMobile: ${sheetData["mobile no"]}\nPlan: ${sheetData.plan}\nAmount: ₹${sheetData["amount paid"]}\nTransaction ID: ${transactionId || paymentId}\n\nPayment screenshot has been uploaded.\nPlease verify and activate my plan.`;
+
+        setTimeout(() => {
+            window.open(`https://wa.me/918275116821?text=${encodeURIComponent(whatsappMsg)}`, '_blank');
+            if (onNavigate) onNavigate('dashboard');
+        }, 3000);
+
+    } catch (err: any) {
+        toast.error("Error saving payment: " + err.message);
+        setCheckoutStep(2); // Go back
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('UPI ID copied to clipboard!');
   };
 
   return (
@@ -259,20 +371,80 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
                   </button>
                 </div>
               ) : checkoutStep === 2 ? (
-                <div className="py-12 flex flex-col items-center justify-center text-center">
-                  <div className="w-20 h-20 bg-brand-primary/10 text-brand-primary rounded-full flex items-center justify-center mb-6">
-                     <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-8 h-8 border-4 border-brand-primary border-t-transparent rounded-full" />
+                <div className="py-2 flex flex-col items-center justify-center w-full">
+                  <div className="flex items-center justify-between w-full mb-6">
+                    <h3 className="text-xl font-bold text-gray-800">Scan & Pay</h3>
+                    <div className="text-brand-primary font-mono font-bold bg-brand-primary/10 px-3 py-1 rounded-lg">
+                      {formatTime(countdown)}
+                    </div>
                   </div>
-                  <h3 className="text-2xl font-serif font-bold mb-2">Preparing Checkout</h3>
-                  <p className="text-gray-500 mb-6">{isProcessingInfo}</p>
+                  
+                  <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-3xl p-6 mb-6 flex flex-col items-center justify-center w-full max-w-[250px] aspect-square relative overflow-hidden">
+                    <img src="/whatsapp.jpeg" alt="UPI QR Code" className="w-full h-full object-contain mix-blend-multiply" onError={(e) => { e.currentTarget.src = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=gharkaswaad@upi&pn=Ghar+Ka+Swaad&am=' + customAmount; }} />
+                  </div>
+
+                  <div className="w-full text-center mb-6">
+                    <p className="text-sm text-gray-500 mb-1">Paying to Ghar Ka Swaad</p>
+                    <p className="text-3xl font-bold mb-4">₹{customAmount}</p>
+
+                    <div className="flex items-center justify-between bg-gray-100 p-3 rounded-xl">
+                       <span className="font-mono text-sm font-medium text-gray-700">9356615556@fam</span>
+                       <button onClick={() => copyToClipboard('9356615556@fam')} className="text-brand-primary hover:text-brand-dark p-2 rounded-lg hover:bg-brand-primary/10 transition-colors flex items-center gap-2 text-sm font-bold">
+                         <Copy size={16} /> Copy
+                       </button>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => setCheckoutStep(3)}
+                    className="w-full py-4 rounded-2xl font-bold bg-brand-primary text-white transition-all hover:bg-brand-dark hover:scale-105 active:scale-95"
+                  >
+                    I Have Paid
+                  </button>
                 </div>
               ) : checkoutStep === 3 ? (
-                <div className="py-12 flex flex-col items-center justify-center text-center">
-                  <div className="w-20 h-20 bg-brand-primary/10 text-brand-primary rounded-full flex items-center justify-center mb-6">
-                     <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-8 h-8 border-4 border-brand-primary border-t-transparent rounded-full" />
+                <div className="py-4 flex flex-col items-center w-full text-center">
+                  <h3 className="text-xl font-bold mb-2">Verify Payment</h3>
+                  <p className="text-sm text-gray-500 mb-6">Upload the payment screenshot or enter the transaction ID to confirm your subscription.</p>
+
+                  <div className="w-full text-left mb-6 relative">
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Payment Screenshot</label>
+                    <div className={`w-full aspect-video rounded-2xl border-2 border-dashed flex flex-col items-center justify-center overflow-hidden transition-all relative ${paymentScreenshot ? 'border-green-500 bg-green-50' : 'border-gray-300 hover:border-brand-primary bg-gray-50'}`}>
+                      {paymentScreenshot ? (
+                        <img src={paymentScreenshot} alt="Receipt" className="w-full h-full object-cover" />
+                      ) : (
+                        <>
+                          <UploadCloud size={32} className="text-gray-400 mb-2" />
+                          <p className="text-sm text-gray-500">Tap to upload receipt</p>
+                        </>
+                      )}
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handleImageUpload} 
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                    </div>
                   </div>
-                  <h3 className="text-2xl font-serif font-bold mb-2">{isProcessingInfo}</h3>
-                  <p className="text-gray-500">Please wait while we confirm your payment details securely.</p>
+
+                  <div className="w-full text-left mb-8">
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Transaction ID (Optional)</label>
+                    <input 
+                      type="text" 
+                      value={transactionId}
+                      onChange={(e) => setTransactionId(e.target.value)}
+                      placeholder="e.g. UPI Ref Number"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all"
+                    />
+                  </div>
+
+                  <button 
+                    onClick={handleFinalSubmit}
+                    disabled={!paymentScreenshot && !transactionId}
+                    className="w-full py-4 rounded-2xl font-bold bg-green-500 text-white transition-all hover:bg-green-600 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+                  >
+                    {isProcessingInfo ? 'Verifying...' : 'Confirm Details'}
+                  </button>
                 </div>
               ) : (
                 <div className="py-12 flex flex-col items-center justify-center text-center">

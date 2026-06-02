@@ -21,7 +21,7 @@ export const BRAND_DATA = {
       name: "1-Day Trial Meal",
       price_per_meal: 80,
       monthly_price: "80 (One Time)",
-      meals_per_day: 1,
+      meals_per_day: 2,
       menu: ["Standard Meal", "Taste our quality", "Dal, Rice, Roti, Sabzi", "Salad/Raita"],
       target: "First Timers",
       description: "Taste before you subscribe! Perfect for checking our food quality."
@@ -31,7 +31,7 @@ export const BRAND_DATA = {
       name: "Daily Veg Plan",
       price_per_meal: 100,
       monthly_price: 2999,
-      meals_per_day: 1,
+      meals_per_day: 2,
       menu: ["Dal Tadka / Rajma / Chole", "Mix Veg / Paneer / Aloo", "Rotis & Rice", "Salad & Buttermilk"],
       target: "Regular Meals",
       description: "Our classic vegetarian tiffin delivered daily. Affordable and hygienic."
@@ -41,7 +41,7 @@ export const BRAND_DATA = {
       name: "Daily Non-Veg Plan",
       price_per_meal: 116,
       monthly_price: 3499,
-      meals_per_day: 1,
+      meals_per_day: 2,
       menu: ["Non-Veg on Wed/Sat/Sun", "Chicken / Egg / Mutton", "Rotis & Rice", "Salad"],
       target: "Protein Lovers",
       description: "Enjoy special non-veg dishes. Veg meals on other days."

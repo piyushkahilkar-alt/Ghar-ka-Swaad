@@ -502,7 +502,14 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
                     .map((sub: any, idx: number) => (
                     <div key={idx} className="flex flex-col gap-3 p-4 border border-gray-100 rounded-2xl bg-gray-50/50">
                         <div className="flex items-center justify-center gap-2 text-brand-dark font-bold bg-brand-secondary/50 py-2 rounded-xl border border-brand-primary/20">
-                          <Package size={18} /> {sub.planName}
+                          <div className="flex flex-col items-center text-center">
+                            <span className="flex items-center justify-center gap-2"><Package size={18} /> {sub.planName}</span>
+                            {sub.paymentStatus === 'Pending Verification' && (
+                              <span className="text-[10px] uppercase font-bold text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded-full mt-1 tracking-wider inline-block">
+                                Pending Verification
+                              </span>
+                            )}
+                          </div>
                         </div>
                         {sub.expiryDate && (
                           <p className="text-xs text-center text-gray-500 font-bold">
@@ -523,7 +530,14 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
                 // Legacy single-plan fallback
                   <div className="flex flex-col gap-3">
                     <div className="flex items-center justify-center gap-2 text-brand-dark font-bold bg-brand-secondary/50 py-3 rounded-xl border border-brand-primary/20">
-                      <Package size={18} /> {orders?.activePlan || 'No Active Plan'}
+                      <div className="flex flex-col items-center text-center">
+                        <span className="flex items-center justify-center gap-2"><Package size={18} /> {orders?.activePlan || 'No Active Plan'}</span>
+                        {userData?.subscription?.paymentStatus === 'Pending Verification' && (
+                          <span className="text-[10px] uppercase font-bold text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded-full mt-1 tracking-wider inline-block">
+                            Pending Verification
+                          </span>
+                        )}
+                      </div>
                     </div>
                     {orders?.activePlan && userData?.subscription?.expiryDate && (
                       <p className="text-xs text-center text-gray-500 font-bold">
@@ -760,7 +774,11 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
                     </div>
                     <div className="text-right">
                       <h4 className="font-bold text-gray-800">₹{payment.amount}</h4>
-                      <span className="inline-block px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full mt-1">
+                      <span className={`inline-block px-3 py-1 text-xs font-bold rounded-full mt-1 ${
+                        payment.status === 'success' || payment.status === 'Verified' ? 'bg-green-100 text-green-700' :
+                        payment.status === 'Pending Verification' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>
                         {payment.status}
                       </span>
                     </div>
