@@ -3,8 +3,6 @@ import { MessageCircle, X, Send, Bot, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BRAND_DATA } from '../../constants';
 
-import { GoogleGenAI } from '@google/genai';
-
 interface ChatMessage {
   role: 'user' | 'model';
   text: string;
@@ -41,7 +39,6 @@ export default function ChatWidget() {
     setIsLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const contents = newHistory.map(msg => ({
         role: msg.role === 'user' ? 'user' : 'model',
         parts: [{ text: msg.text }]
@@ -49,17 +46,22 @@ export default function ChatWidget() {
       
       const pricingInfo = BRAND_DATA.plans.map(p => `${p.name}: ₹${p.price_per_meal}/meal, ₹${p.monthly_price}/month`).join(', ');
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: contents,
-        config: {
-          systemInstruction: `You are a helpful customer support AI for 'Ghar Ka Swaad', a home-cooked tiffin service in Nagpur. Be polite, concise, and helpful. You help users with FAQs, plans, pricing (${pricingInfo}), delivery times, and menu queries. Focus on providing relevant brief answers without making up details.`,
-          temperature: 0.7,
-        }
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents,
+          config: {
+            systemInstruction: `You are a helpful customer support AI for 'Ghar Ka Swaad', a home-cooked tiffin service in Nagpur. Be polite, concise, and helpful. You help users with FAQs, plans, pricing (${pricingInfo}), delivery times, and menu queries. Focus on providing relevant brief answers without making up details.`,
+            temperature: 0.7,
+          }
+        })
       });
       
-      if (response.text) {
-        setMessages([...newHistory, { role: 'model', text: response.text }]);
+      const data = await response.json();
+      
+      if (data.text) {
+        setMessages([...newHistory, { role: 'model', text: data.text }]);
       } else {
         setMessages([...newHistory, { role: 'model', text: "Hmm, I didn't quite get that. Could you try rephrasing?" }]);
       }

@@ -47,6 +47,32 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
       localStorage.setItem('token', dummyToken);
       localStorage.setItem('user', JSON.stringify({ uid: user.uid, ...userDataToSave }));
 
+      if (isNewUser) {
+        try {
+          const addressJoined = [address, landmark, city].filter(Boolean).join(', ');
+          const sheetData = {
+            "Name": user.displayName || "",
+            "Mobile": user.phoneNumber || user.email || "",
+            "Email": user.email || "",
+            "Address": addressJoined || "",
+            "Plan": "N/A (Just Registered)",
+            "Amount": 0,
+            "Plan Date": new Date().toISOString(),
+            "Expiry date": new Date().toISOString()
+          };
+          console.log("[DEBUG Frontend Google] Form submission: Sending webhook data", JSON.stringify(sheetData));
+          fetch("https://script.google.com/macros/s/AKfycby7zusD7GvrXHdtZGXe4P8MlFBgAS8EsP-4ugJvGDl9B2JNVzW2nG7pc-yRl0XPpRJl6g/exec", {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(sheetData)
+          }).then(() => console.log("[DEBUG Frontend Google] Webhook sent successfully from frontend"))
+            .catch(e => console.error("[DEBUG Frontend Google] Webhook failed:", e));
+        } catch (e) {
+           console.error("Webhook frontend catch:", e);
+        }
+      }
+
       setSuccess('Google Registration successful! Redirecting to dashboard...');
       setTimeout(() => {
         onNavigate('dashboard');
@@ -127,6 +153,31 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
       localStorage.setItem('token', dummyToken);
       localStorage.setItem('user', JSON.stringify({ uid: user.uid, email, ...userDataToSave }));
 
+      // --- NEW: Google Sheets Webhook Sync directly from frontend ---
+      try {
+        const addressJoined = [address, landmark, city].filter(Boolean).join(', ');
+        const sheetData = {
+          "Name": name || "",
+          "Mobile": phone || email || "",
+          "Email": email || "",
+          "Address": addressJoined || "",
+          "Plan": "N/A (Just Registered)",
+          "Amount": 0,
+          "Plan Date": new Date().toISOString(),
+          "Expiry date": new Date().toISOString()
+        };
+        console.log("[DEBUG Frontend] Form submission: Sending webhook data", JSON.stringify(sheetData));
+        fetch("https://script.google.com/macros/s/AKfycby7zusD7GvrXHdtZGXe4P8MlFBgAS8EsP-4ugJvGDl9B2JNVzW2nG7pc-yRl0XPpRJl6g/exec", {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(sheetData)
+        }).then(() => console.log("[DEBUG Frontend] Webhook sent successfully from frontend"))
+          .catch(e => console.error("[DEBUG Frontend] Webhook failed from frontend:", e));
+      } catch (e) {
+         console.error("Webhook frontend catch:", e);
+      }
+      
       setSuccess('Registration successful! Redirecting to dashboard...');
       setTimeout(() => {
         onNavigate('dashboard');

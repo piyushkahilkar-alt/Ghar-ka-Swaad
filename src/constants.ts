@@ -29,8 +29,8 @@ export const BRAND_DATA = {
     {
       id: 1,
       name: "Daily Veg Plan",
-      price_per_meal: 133,
-      monthly_price: 4000,
+      price_per_meal: 100,
+      monthly_price: 2999,
       meals_per_day: 1,
       menu: ["Dal Tadka / Rajma / Chole", "Mix Veg / Paneer / Aloo", "Rotis & Rice", "Salad & Buttermilk"],
       target: "Regular Meals",
@@ -39,8 +39,8 @@ export const BRAND_DATA = {
     {
       id: 2,
       name: "Daily Non-Veg Plan",
-      price_per_meal: 183,
-      monthly_price: 5500,
+      price_per_meal: 116,
+      monthly_price: 3499,
       meals_per_day: 1,
       menu: ["Non-Veg on Wed/Sat/Sun", "Chicken / Egg / Mutton", "Rotis & Rice", "Salad"],
       target: "Protein Lovers",

@@ -1,3 +1,4 @@
+import { GoogleGenAI } from "@google/genai";
 import express from 'express';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
@@ -240,6 +241,25 @@ const authenticateToken = (req: any, res: any, next: any) => {
 
 // --- API Routes ---
 
+app.post('/api/chat', async (req, res) => {
+  try {
+    const ai = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY,
+      httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
+    });
+    const { contents, config } = req.body;
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents,
+      config
+    });
+    res.json({ text: response.text });
+  } catch (error: any) {
+    console.error("Gemini API error:", error);
+    res.status(500).json({ error: error.message || "Failed to generate AI response" });
+  }
+});
+
 app.post('/api/send-otp', async (req, res) => {
   try {
     const { phoneOrEmail } = req.body;
@@ -294,20 +314,26 @@ app.post('/api/register', async (req, res) => {
         const addressJoined = [address, landmark, city].filter(Boolean).join(', ') || "";
         const sheetData = {
           "Name": name || "",
-          "Mobile Number": phoneOrEmail || "",
+          "Mobile": phoneOrEmail || "",
           "Email": phoneOrEmail || "",
-          "Full Address": addressJoined,
-          "Selected Plan": "N/A (Just Registered)",
-          "Amount Paid": 0,
-          "Payment Status": "Pending",
-          "Registration Date": new Date().toISOString(),
-          "Expiry Date": ""
+          "Address": addressJoined,
+          "Plan": "N/A (Just Registered)",
+          "Amount": 0,
+          "Plan Date": new Date().toISOString(),
+          "Expiry date": new Date().toISOString()
         };
-        fetch("https://script.google.com/macros/s/AKfycbymDzWgpjJQcgWateXiuCh9a-ZgcLSVETbP90EVyp8rlLzbJhrMEh57PoZQpG7mbb9c9A/exec", {
+        console.log("[DEBUG] Webhook Request data (Register):", JSON.stringify(sheetData));
+        fetch("https://script.google.com/macros/s/AKfycby7zusD7GvrXHdtZGXe4P8MlFBgAS8EsP-4ugJvGDl9B2JNVzW2nG7pc-yRl0XPpRJl6g/exec", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(sheetData)
-        }).catch(e => console.error("Webhook register sync failed", e));
+          body: JSON.stringify(sheetData),
+          redirect: "follow"
+        })
+        .then(async (res) => {
+            const textText = await res.text();
+            console.log("[DEBUG] Webhook Response (Register):", res.status, textText);
+        })
+        .catch(e => console.error("[DEBUG] Webhook register sync failed:", e));
     } catch(e) {}
     
     res.status(201).json({ message: 'User registered successfully!' });
@@ -633,33 +659,33 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
 
       // Silent Google Sheets Webhook
       try {
-        let webhookUserObj = { name: "Not provided", email: "Not provided", address: "Not provided" };
+        let webhookUserObj = { name: "", email: "", address: "" };
         
         try {
            const localUser = await User.findById(actualUserId) || await User.findById(req.user?.id);
            if (localUser) {
                webhookUserObj = {
-                 name: localUser.name || "Not provided",
-                 email: localUser.phoneOrEmail || "Not provided", // often used as email
+                 name: localUser.name || "",
+                 email: localUser.phoneOrEmail || "", // often used as email
                  address: [localUser.address, localUser.landmark, localUser.city].filter(Boolean).join(', ')
                };
                if (!phoneToSend || phoneToSend === "Customer") {
-                  phoneToSend = localUser.phoneOrEmail || "Not provided";
+                  phoneToSend = localUser.phoneOrEmail || "";
                }
            }
         } catch (e) { console.error(e) }
 
-        if (adminDb && actualUserId && webhookUserObj.name === "Not provided") {
+        if (adminDb && actualUserId && !webhookUserObj.name) {
            const snap = await adminDb.collection("users").doc(actualUserId).get();
            if (snap.exists && snap.data()) {
                const data = snap.data();
                webhookUserObj = {
-                 name: data.name || data.displayName || "Not provided",
-                 email: data.email || data.phoneOrEmail || "Not provided",
+                 name: data.name || data.displayName || "",
+                 email: data.email || data.phoneOrEmail || "",
                  address: [data.address, data.landmark, data.city].filter(Boolean).join(', ')
                };
                if (!phoneToSend || phoneToSend === "Customer") {
-                  phoneToSend = data.phone || data.phoneNumber || "Not provided";
+                  phoneToSend = data.phone || data.phoneNumber || "";
                }
            }
         }
@@ -668,30 +694,36 @@ app.post('/api/verify-payment', authenticateToken, async (req: any, res: any) =>
         const expiryDate = new Date();
         expiryDate.setDate(planDate.getDate() + 30);
 
-        const nameStr = webhookUserObj.name === "Not provided" ? "" : webhookUserObj.name;
+        const nameStr = webhookUserObj.name;
         const mobileStr = phoneToSend === "Customer" ? "" : phoneToSend;
-        const emailStr = webhookUserObj.email === "Not provided" ? "" : webhookUserObj.email;
-        const addressStr = webhookUserObj.address === "Not provided" ? "" : webhookUserObj.address;
+        const emailStr = webhookUserObj.email;
+        const addressStr = webhookUserObj.address;
 
         const sheetData = {
           "Name": nameStr,
-          "Mobile Number": mobileStr,
+          "Mobile": mobileStr,
           "Email": emailStr,
-          "Full Address": addressStr,
-          "Selected Plan": planName,
-          "Amount Paid": actualPaidAmount,
-          "Payment Status": "Completed",
-          "Registration Date": planDate.toISOString(),
-          "Expiry Date": expiryDate.toISOString()
+          "Address": addressStr,
+          "Plan": planName,
+          "Amount": actualPaidAmount,
+          "Plan Date": planDate.toISOString(),
+          "Expiry date": expiryDate.toISOString()
         };
+        console.log("[DEBUG] Webhook Request data (Payment):", JSON.stringify(sheetData));
 
-        fetch("https://script.google.com/macros/s/AKfycbymDzWgpjJQcgWateXiuCh9a-ZgcLSVETbP90EVyp8rlLzbJhrMEh57PoZQpG7mbb9c9A/exec", {
+        fetch("https://script.google.com/macros/s/AKfycby7zusD7GvrXHdtZGXe4P8MlFBgAS8EsP-4ugJvGDl9B2JNVzW2nG7pc-yRl0XPpRJl6g/exec", {
           method: "POST",
           headers: {
              "Content-Type": "application/json",
           },
-          body: JSON.stringify(sheetData)
-        }).catch(e => console.error("Webhook post failed:", e));
+          body: JSON.stringify(sheetData),
+          redirect: "follow"
+        })
+        .then(async (res) => {
+            const textText = await res.text();
+            console.log("[DEBUG] Webhook Response (Payment):", res.status, textText);
+        })
+        .catch(e => console.error("[DEBUG] Webhook post failed (Payment):", e));
       } catch (err) {
         console.error("Webhook processing error:", err);
       }
@@ -985,7 +1017,7 @@ app.get('/api/admin/sync-sheets', async (req: any, res: any) => {
       }
     });
 
-    const webhookUrl = "https://script.google.com/macros/s/AKfycbymDzWgpjJQcgWateXiuCh9a-ZgcLSVETbP90EVyp8rlLzbJhrMEh57PoZQpG7mbb9c9A/exec";
+    const webhookUrl = "https://script.google.com/macros/s/AKfycby7zusD7GvrXHdtZGXe4P8MlFBgAS8EsP-4ugJvGDl9B2JNVzW2nG7pc-yRl0XPpRJl6g/exec";
     const syncedUsers = [];
 
     for (const doc of usersSnap.docs) {
@@ -1014,21 +1046,27 @@ app.get('/api/admin/sync-sheets', async (req: any, res: any) => {
        
        const sheetData = {
           "Name": name,
-          "Mobile Number": mobile,
+          "Mobile": mobile,
           "Email": email,
-          "Full Address": address,
-          "Selected Plan": planName,
-          "Amount Paid": amountPaid,
-          "Payment Status": paymentStatus,
-          "Registration Date": planDate.toISOString(),
-          "Expiry Date": expiryDateString
+          "Address": address,
+          "Plan": planName,
+          "Amount": amountPaid,
+          "Plan Date": planDate.toISOString(),
+          "Expiry date": expiryDateString
        };
 
+       console.log("[DEBUG] Webhook Request data (Sync):", JSON.stringify(sheetData));
        fetch(webhookUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(sheetData)
-       }).catch(e => console.error("Sync Webhook failed", e));
+          body: JSON.stringify(sheetData),
+          redirect: "follow"
+       })
+       .then(async (res) => {
+           const textText = await res.text();
+           console.log("[DEBUG] Webhook Response (Sync):", res.status, textText);
+       })
+       .catch(e => console.error("[DEBUG] Sync Webhook failed:", e));
        
        syncedUsers.push(sheetData);
     }

@@ -288,30 +288,16 @@ app.post(['/api/register', '/register'], async (req, res) => {
     try {
         const addressJoined = [address, landmark, city].filter(Boolean).join(', ') || "";
         const sheetData = {
-          name: name || "",
-          mobile: phoneOrEmail || "",
-          email: phoneOrEmail || "",
-          address: addressJoined,
-          selectedPlan: "N/A (Just Registered)",
-          amountPaid: 0,
-          planDate: new Date().toISOString(),
-          expiryDate: new Date().toISOString(),
-          
-          Name: name || "",
-          Mobile: phoneOrEmail || "",
-          "Mobile Number": phoneOrEmail || "",
-          Email: phoneOrEmail || "",
-          Address: addressJoined,
-          Plan: "N/A (Just Registered)",
-          "Selected Plan": "N/A (Just Registered)",
-          Amount: 0,
-          "Amount Paid": 0,
-          Date: new Date().toISOString(),
-          "Plan Start Date": new Date().toISOString(),
-          "Expiry date": new Date().toISOString(),
-          "expriy date Date": new Date().toISOString()
+          "Name": name || "",
+          "Mobile": phoneOrEmail || "",
+          "Email": phoneOrEmail || "",
+          "Address": addressJoined,
+          "Plan": "N/A (Just Registered)",
+          "Amount": 0,
+          "Plan Date": new Date().toISOString(),
+          "Expiry date": new Date().toISOString()
         };
-        fetch("https://script.google.com/macros/s/AKfycbymDzWgpjJQcgWateXiuCh9a-ZgcLSVETbP90EVyp8rlLzbJhrMEh57PoZQpG7mbb9c9A/exec", {
+        fetch("https://script.google.com/macros/s/AKfycby7zusD7GvrXHdtZGXe4P8MlFBgAS8EsP-4ugJvGDl9B2JNVzW2nG7pc-yRl0XPpRJl6g/exec", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(sheetData)
@@ -705,33 +691,33 @@ app.post(['/api/verify-payment', '/verify-payment'], authenticateToken, async (r
 
       // Silent Google Sheets Webhook
       try {
-        let webhookUserObj = { name: "Not provided", email: "Not provided", address: "Not provided" };
+        let webhookUserObj = { name: "", email: "", address: "" };
         
         try {
            const localUser = await User.findById(actualUserId) || await User.findById(req.user?.id);
            if (localUser) {
                webhookUserObj = {
-                 name: localUser.name || "Not provided",
-                 email: localUser.phoneOrEmail || "Not provided", // often used as email
+                 name: localUser.name || "",
+                 email: localUser.phoneOrEmail || "", // often used as email
                  address: [localUser.address, localUser.landmark, localUser.city].filter(Boolean).join(', ')
                };
                if (!phoneToSend || phoneToSend === "Customer") {
-                  phoneToSend = localUser.phoneOrEmail || "Not provided";
+                  phoneToSend = localUser.phoneOrEmail || "";
                }
            }
         } catch (e) { console.error(e) }
 
-        if (adminDb && actualUserId && webhookUserObj.name === "Not provided") {
+        if (adminDb && actualUserId && !webhookUserObj.name) {
            const snap = await adminDb.collection("users").doc(actualUserId).get();
            if (snap.exists && snap.data()) {
                const data = snap.data();
                webhookUserObj = {
-                 name: data.name || data.displayName || "Not provided",
-                 email: data.email || data.phoneOrEmail || "Not provided",
+                 name: data.name || data.displayName || "",
+                 email: data.email || data.phoneOrEmail || "",
                  address: [data.address, data.landmark, data.city].filter(Boolean).join(', ')
                };
                if (!phoneToSend || phoneToSend === "Customer") {
-                  phoneToSend = data.phone || data.phoneNumber || "Not provided";
+                  phoneToSend = data.phone || data.phoneNumber || "";
                }
            }
         }
@@ -740,24 +726,23 @@ app.post(['/api/verify-payment', '/verify-payment'], authenticateToken, async (r
         const expiryDate = new Date();
         expiryDate.setDate(planDate.getDate() + 30);
 
-        const nameStr = webhookUserObj.name === "Not provided" ? "" : webhookUserObj.name;
+        const nameStr = webhookUserObj.name;
         const mobileStr = phoneToSend === "Customer" ? "" : phoneToSend;
-        const emailStr = webhookUserObj.email === "Not provided" ? "" : webhookUserObj.email;
-        const addressStr = webhookUserObj.address === "Not provided" ? "" : webhookUserObj.address;
+        const emailStr = webhookUserObj.email;
+        const addressStr = webhookUserObj.address;
 
         const sheetData = {
           "Name": nameStr,
-          "Mobile Number": mobileStr,
+          "Mobile": mobileStr,
           "Email": emailStr,
-          "Full Address": addressStr,
-          "Selected Plan": planName,
-          "Amount Paid": actualPaidAmount,
-          "Payment Status": "Completed",
-          "Registration Date": planDate.toISOString(),
-          "Expiry Date": expiryDate.toISOString()
+          "Address": addressStr,
+          "Plan": planName,
+          "Amount": actualPaidAmount,
+          "Plan Date": planDate.toISOString(),
+          "Expiry date": expiryDate.toISOString()
         };
 
-        fetch("https://script.google.com/macros/s/AKfycbymDzWgpjJQcgWateXiuCh9a-ZgcLSVETbP90EVyp8rlLzbJhrMEh57PoZQpG7mbb9c9A/exec", {
+        fetch("https://script.google.com/macros/s/AKfycby7zusD7GvrXHdtZGXe4P8MlFBgAS8EsP-4ugJvGDl9B2JNVzW2nG7pc-yRl0XPpRJl6g/exec", {
           method: "POST",
           headers: {
              "Content-Type": "application/json",
@@ -968,50 +953,42 @@ app.get(['/api/admin/sync-sheets', '/admin/sync-sheets'], async (req: any, res: 
       }
     });
 
-    const webhookUrl = "https://script.google.com/macros/s/AKfycbymDzWgpjJQcgWateXiuCh9a-ZgcLSVETbP90EVyp8rlLzbJhrMEh57PoZQpG7mbb9c9A/exec";
+    const webhookUrl = "https://script.google.com/macros/s/AKfycby7zusD7GvrXHdtZGXe4P8MlFBgAS8EsP-4ugJvGDl9B2JNVzW2nG7pc-yRl0XPpRJl6g/exec";
     const usersData = [];
 
     for (const doc of usersSnap.docs) {
        const data = doc.data();
        
-       let planName = data.subscription?.planName || data.selectedPlan || data.planName || data.plan || "";
+       let planName = data.subscription?.selectedPlan || data.subscription?.planName || data.selectedPlan || data.planName || data.plan || "";
        let time = data.createdAt ? (typeof data.createdAt.toMillis === 'function' ? data.createdAt.toMillis() : new Date(data.createdAt).getTime()) : Date.now();
        if (isNaN(time)) time = Date.now();
        
-       let amountPaid = paymentsByUser[doc.id] || data.amount || data.paidAmount || data.amountPaid || 0;
+       let amountPaid = data.subscription?.amountPaid || paymentsByUser[doc.id] || data.amount || data.paidAmount || data.amountPaid || 0;
+       let paymentStatus = data.subscription?.paymentStatus || "Unknown";
        
        const planDate = new Date(time);
-       const expiryDate = new Date(time);
-       expiryDate.setDate(planDate.getDate() + 30);
+       const defaultExpiryDate = new Date(time);
+       defaultExpiryDate.setDate(planDate.getDate() + 30);
        
        const name = data.name || data.displayName || data.fullName || "";
        const mobile = data.phone || data.phoneNumber || data.mobile || data.phoneOrEmail || "";
        const email = data.email || data.phoneOrEmail || "";
-       const addressArr = [data.address, data.landmark, data.city].filter(Boolean);
+       const addressArr = [data.address, data.city, data.landmark].filter(Boolean);
        const address = addressArr.join(', ') || "";
        
        if (!name && !mobile && !email) continue;
        
-       const expiryDateString = (data.subscription?.expiryDate) ? new Date(data.subscription.expiryDate).toISOString() : expiryDate.toISOString();
+       const expiryDateString = (data.subscription?.expiryDate) ? new Date(data.subscription.expiryDate).toISOString() : defaultExpiryDate.toISOString();
        
        const sheetData: any = {
-          name, mobile, email, address, selectedPlan: planName, amountPaid,
-          planDate: planDate.toISOString(), 
-          expiryDate: expiryDateString,
-          
-          Name: name,
-          Mobile: mobile,
-          "Mobile Number": mobile,
-          Email: email,
-          Address: address,
-          Plan: planName,
-          "Selected Plan": planName,
-          Amount: amountPaid,
-          "Amount Paid": amountPaid,
-          Date: planDate.toISOString(),
-          "Plan Start Date": planDate.toISOString(),
+          "Name": name,
+          "Mobile": mobile,
+          "Email": email,
+          "Address": address,
+          "Plan": planName,
+          "Amount": amountPaid,
+          "Plan Date": planDate.toISOString(),
           "Expiry date": expiryDateString,
-          "expriy date Date": expiryDateString,
           timestamp: time
        };
        usersData.push(sheetData);

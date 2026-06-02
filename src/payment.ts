@@ -3,7 +3,11 @@ import { collection, addDoc, doc, updateDoc, setDoc, arrayUnion } from 'firebase
 import toast from 'react-hot-toast';
 
 export const verifyPayment = async (response: any, token: string, userStr: string, plan: any) => {
+    console.log("[DEBUG Frontend] verifyPayment started with response:", response, "plan:", plan);
     const { uid } = JSON.parse(userStr);
+    
+    // Log API Request
+    console.log("[DEBUG Frontend] Fetching /api/verify-payment API request...");
     const verifyResponse = await fetch('/api/verify-payment', {
         method: 'POST',
         headers: {
@@ -22,14 +26,17 @@ export const verifyPayment = async (response: any, token: string, userStr: strin
     });
 
     const verifyData = await verifyResponse.json();
+    console.log("[DEBUG Frontend] /api/verify-payment API response:", verifyResponse.status, verifyData);
     
     if (!verifyResponse.ok) {
+         console.error("[DEBUG Frontend] Payment verification failed at backend!");
          throw new Error(verifyData.error || 'Payment verification failed');
     }
     
     // Fallback: If verification succeeded but backend couldn't update Firestore (due to Vercel env constraints),
     // update Firestore securely from the frontend.
     try {
+        console.log("[DEBUG Frontend] Initiating fast-save fallback to Firebase...");
         const renewal = new Date();
         renewal.setDate(renewal.getDate() + 30);
         const numericAmount = parseFloat((plan.monthly_price || "0").toString().replace(/[^0-9.]/g, ''));
@@ -60,8 +67,9 @@ export const verifyPayment = async (response: any, token: string, userStr: strin
             plan: plan.name || "Unknown Plan",
             createdAt: new Date().toISOString()
         }, { merge: true });
+        console.log("[DEBUG Frontend] Firebase save completed successfully!");
     } catch (dbErr) {
-        console.error("Frontend Firestore fast-save fallback failed:", dbErr);
+        console.error("[DEBUG Frontend] Firebase fast-save fallback failed:", dbErr);
     }
     
     return verifyData;
