@@ -380,7 +380,7 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
                   </div>
                   
                   <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-3xl p-6 mb-6 flex flex-col items-center justify-center w-full max-w-[250px] aspect-square relative overflow-hidden">
-                    <img src="/whatsapp.jpeg" alt="UPI QR Code" className="w-full h-full object-contain mix-blend-multiply" onError={(e) => { e.currentTarget.src = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=gharkaswaad@upi&pn=Ghar+Ka+Swaad&am=' + customAmount; }} />
+                    <img src="/qrimage.jpeg" alt="UPI QR Code" className="w-full h-full object-contain mix-blend-multiply" onError={(e) => { e.currentTarget.src = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=gharkaswaad@upi&pn=Ghar+Ka+Swaad&am=' + customAmount; }} />
                   </div>
 
                   <div className="w-full text-center mb-6">
