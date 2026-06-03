@@ -6,7 +6,8 @@ export const BRAND_DATA = {
     phone: "+91 8275116821",
     email: "contact@gharkaswaad.com",
     address: "Nandanvan, KDK Collage road, Nagpur",
-    whatsapp: "+918275116821"
+    whatsapp: "+918275116821",
+    instagram: "https://www.instagram.com/gharkaswaadngp/"
   },
 
   locations: [

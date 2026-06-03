@@ -23,7 +23,7 @@ export default function Footer({ onNavigate }: FooterProps) {
             {BRAND_DATA.brand.tagline}. Delivering fresh, hygienic, and affordable home-cooked meals across Nagpur.
           </p>
           <div className="flex gap-4">
-            <a href="#" className="w-10 h-10 flex items-center justify-center text-white bg-brand-primary rounded-full hover:bg-brand-primary/80 transition-colors"><Instagram size={18} /></a>
+            <a href={BRAND_DATA.brand.instagram} target="_blank" rel="noopener noreferrer" className="w-10 h-10 flex items-center justify-center text-white bg-brand-primary rounded-full hover:bg-brand-primary/80 transition-colors"><Instagram size={18} /></a>
             <a href="#" className="w-10 h-10 flex items-center justify-center text-white bg-brand-primary rounded-full hover:bg-brand-primary/80 transition-colors"><Facebook size={18} /></a>
           </div>
         </div>
