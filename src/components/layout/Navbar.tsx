@@ -27,6 +27,7 @@ export default function Navbar({ currentPage, onNavigate }: NavbarProps) {
 
   const navItems: { label: string; value: PageType }[] = [
     { label: 'Home', value: 'home' },
+    { label: 'About Us', value: 'about' },
     { label: 'Plans', value: 'plans' },
     { label: 'Menu', value: 'menu' },
     { label: 'Contact', value: 'contact' },

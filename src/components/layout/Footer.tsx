@@ -32,6 +32,7 @@ export default function Footer({ onNavigate }: FooterProps) {
           <h4 className="text-white font-serif font-bold mb-6 text-2xl drop-shadow-sm">Quick Links</h4>
           <ul className="space-y-4 text-sm font-medium">
             <li><a href="/" onClick={(e) => { e.preventDefault(); onNavigate('home'); }} className="hover:text-white transition-colors">Home</a></li>
+            <li><a href="/about" onClick={(e) => { e.preventDefault(); onNavigate('about'); }} className="hover:text-white transition-colors">About Us</a></li>
             <li><a href="/plans" onClick={(e) => { e.preventDefault(); onNavigate('plans'); }} className="hover:text-white transition-colors">Subscription Plans</a></li>
             <li><a href="/menu" onClick={(e) => { e.preventDefault(); onNavigate('menu'); }} className="hover:text-white transition-colors">Weekly Menu</a></li>
             <li><a href="/track" onClick={(e) => { e.preventDefault(); onNavigate('track'); }} className="hover:text-white transition-colors">Track Your Tiffin</a></li>

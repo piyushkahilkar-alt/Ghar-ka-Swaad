@@ -17,17 +17,18 @@ import { Analytics } from '@vercel/analytics/react';
 // Lazy loading pages for better performance
 const PlansPage = lazy(() => import('./components/pages/PlansPage'));
 const MenuPage = lazy(() => import('./components/pages/MenuPage'));
+const AboutPage = lazy(() => import('./components/pages/AboutPage'));
 const ContactPage = lazy(() => import('./components/pages/ContactPage'));
 const TrackOrderPage = lazy(() => import('./components/pages/TrackOrderPage'));
 const LoginPage = lazy(() => import('./components/pages/LoginPage'));
 const RegisterPage = lazy(() => import('./components/pages/RegisterPage'));
 const DashboardPage = lazy(() => import('./components/pages/DashboardPage'));
 
-export type PageType = 'home' | 'plans' | 'menu' | 'contact' | 'track' | 'login' | 'register' | 'dashboard';
+export type PageType = 'home' | 'about' | 'plans' | 'menu' | 'contact' | 'track' | 'login' | 'register' | 'dashboard';
 
 const getInitialPage = (): PageType => {
   const path = window.location.pathname.replace('/', '') as PageType;
-  const validPages: PageType[] = ['home', 'plans', 'menu', 'contact', 'track', 'login', 'register', 'dashboard'];
+  const validPages: PageType[] = ['home', 'about', 'plans', 'menu', 'contact', 'track', 'login', 'register', 'dashboard'];
   if (validPages.includes(path)) {
     return path;
   }
@@ -133,6 +134,9 @@ export default function App() {
     switch (currentPage) {
       case 'home':
         PageComponent = <HomePage onNavigate={setCurrentPage} />;
+        break;
+      case 'about':
+        PageComponent = <AboutPage />;
         break;
       case 'plans':
         PageComponent = <PlansPage onNavigate={setCurrentPage} />;
