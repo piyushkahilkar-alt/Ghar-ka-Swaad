@@ -71,8 +71,8 @@ export default function LoginPage({ onNavigate }: { onNavigate: (page: any) => v
         setSuccess('');
         try {
           await verifyEmailOTPFromFirestore(email, otp);
-          const { user, userData } = await loginWithEmailOTP(email);
-          processLoginSuccess(user, userData);
+          const { user, userData, isNewUser } = await loginWithEmailOTP(email);
+          processLoginSuccess(user, userData, isNewUser);
         } catch (err: any) {
           console.error(err);
           if (err.code === 'auth/email-already-in-use') {
@@ -91,8 +91,8 @@ export default function LoginPage({ onNavigate }: { onNavigate: (page: any) => v
     setError('');
     setLoading(true);
     try {
-      const { user, userData } = await signInWithGoogle();
-      processLoginSuccess(user, userData);
+      const { user, userData, isNewUser } = await signInWithGoogle();
+      processLoginSuccess(user, userData, isNewUser);
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Google Login failed');
@@ -101,7 +101,7 @@ export default function LoginPage({ onNavigate }: { onNavigate: (page: any) => v
     }
   };
 
-  const processLoginSuccess = (user: any, userData: any) => {
+  const processLoginSuccess = (user: any, userData: any, isNewUser: boolean = false) => {
     // Fast login - set token and user in storage instantly
     const dummyToken = `dummy-token-${user.uid}`;
     const userDataStr = JSON.stringify({ uid: user.uid, email: user.email, ...userData });
@@ -112,6 +112,11 @@ export default function LoginPage({ onNavigate }: { onNavigate: (page: any) => v
     } else {
       sessionStorage.setItem('token', dummyToken);
       sessionStorage.setItem('user', userDataStr);
+    }
+    
+    if (isNewUser) {
+      const whatsappText = `New Ghar Ka Swaad Registration\n\nName: ${user.displayName || "Customer"}\nPhone: ${user.phoneNumber || user.email || ""}\nAddress: No Address Provided\nPlan: N/A\nAmount Paid: 0\n\nUser Registered Successfully!`;
+      window.open(`https://wa.me/${BRAND_DATA.brand.whatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(whatsappText)}`, '_blank');
     }
     
     onNavigate('dashboard');

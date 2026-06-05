@@ -23,9 +23,9 @@ export const BRAND_DATA = {
       price_per_meal: 99,
       monthly_price: "99 (One Time)",
       meals_per_day: 1,
-      menu: ["Standard Meal", "Taste our quality", "Dal, Rice, Roti, Sabzi", "Salad/Raita"],
+      menu: ["Standard Meal", "Taste our quality", "Dal, Rice, Roti, Sabzi", "Salad, Aachar, Cold Drink"],
       target: "First Timers",
-      description: "The trial mill is available for two days. The trial mill is applicable for today only. The trial mill is for the first 100 trials. Registration and login are required for this."
+      description: "Try our quality before subscribing. On 8th June, we are going to provide 50% off on trial, so stay updated!"
     },
     {
       id: 1,
@@ -33,7 +33,7 @@ export const BRAND_DATA = {
       price_per_meal: 100,
       monthly_price: 2999,
       meals_per_day: 2,
-      menu: ["Dal Tadka / Rajma / Chole", "Mix Veg / Paneer / Aloo", "Rotis & Rice", "Salad & Buttermilk"],
+      menu: ["Fresh Sabzi & Dal Tadka", "Rice & Rotis", "Salad & Aachar", "South Indian & Pulao on Sundays"],
       target: "Regular Meals",
       description: "Our classic vegetarian tiffin delivered daily. Affordable and hygienic."
     },
@@ -43,7 +43,7 @@ export const BRAND_DATA = {
       price_per_meal: 116,
       monthly_price: 3499,
       meals_per_day: 2,
-      menu: ["Non-Veg on Wed/Sat/Sun", "Chicken / Egg / Mutton", "Rotis & Rice", "Salad"],
+      menu: ["Fresh Sabzi & Dal Tadka", "Rice & Rotis", "Salad & Aachar", "Anda Curry & Chicken Biriyani on Wed/Sun"],
       target: "Protein Lovers",
       description: "Enjoy special non-veg dishes. Veg meals on other days."
     }
