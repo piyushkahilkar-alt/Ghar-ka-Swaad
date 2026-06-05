@@ -20,10 +20,10 @@ export const BRAND_DATA = {
     {
       id: 0,
       name: "Trial Offer",
-      price_per_meal: 99,
-      monthly_price: "99 (One Time)",
+      price_per_meal: 79,
+      monthly_price: "79 (One Time)",
       meals_per_day: 1,
-      menu: ["Standard Meal", "Taste our quality", "Dal, Rice, Roti, Sabzi", "Salad, Aachar, Cold Drink"],
+      menu: ["Standard Meal", "Taste our quality", "Dal, Rice, Roti, Sabzi", "Salad & Aachar"],
       target: "First Timers",
       description: "Try our quality before subscribing. On 8th June, we are going to provide 50% off on trial, so stay updated!"
     },
@@ -36,26 +36,16 @@ export const BRAND_DATA = {
       menu: ["Fresh Sabzi & Dal Tadka", "Rice & Rotis", "Salad & Aachar", "South Indian & Pulao on Sundays"],
       target: "Regular Meals",
       description: "Our classic vegetarian tiffin delivered daily. Affordable and hygienic."
-    },
-    {
-      id: 2,
-      name: "Daily Non-Veg Plan",
-      price_per_meal: 116,
-      monthly_price: 3499,
-      meals_per_day: 2,
-      menu: ["Fresh Sabzi & Dal Tadka", "Rice & Rotis", "Salad & Aachar", "Anda Curry & Chicken Biriyani on Wed/Sun"],
-      target: "Protein Lovers",
-      description: "Enjoy special non-veg dishes. Veg meals on other days."
     }
   ],
 
   daily_menu: {
     monday: ["Dal Tadka (~150 kcal)", "Rice (~130 kcal)", "Roti (~120 kcal)", "Aloogobi (~140 kcal)", "Salad (~20 kcal)", "Aachar (~30 kcal)"],
     tuesday: ["Dal Tadka (~150 kcal)", "Rice (~130 kcal)", "Roti (~120 kcal)", "Mix Veg (~130 kcal)", "Salad (~20 kcal)", "Aachar (~30 kcal)"],
-    wednesday: ["Dal Tadka (~150 kcal)", "Rice (~130 kcal)", "Pattagobi (~110 kcal)", "Salad (~20 kcal)", "Aachar (~30 kcal)", "(NV: Anda Curry ~200 kcal)"],
+    wednesday: ["Dal Tadka (~150 kcal)", "Rice (~130 kcal)", "Pattagobi (~110 kcal)", "Salad (~20 kcal)", "Aachar (~30 kcal)"],
     thursday: ["Dal Tadka (~150 kcal)", "Rice (~130 kcal)", "Baigan & Mix Veg (~140 kcal)", "Salad (~20 kcal)", "Aachar (~30 kcal)", "Roti (~120 kcal)"],
     friday: ["Dal Tadka (~150 kcal)", "Rice (~130 kcal)", "Rajma Masala (~180 kcal)", "Salad (~20 kcal)", "Aachar (~30 kcal)", "Roti (~120 kcal)"],
-    sunday: ["Morning: South Indian Nasta (~300 kcal)", "Night: Veg Pulao & Kadi (~400 kcal)", "(NV: Chicken & Biriyani ~600 kcal)"]
+    sunday: ["Morning: South Indian Nasta (~300 kcal)", "Night: Veg Pulao & Kadi (~400 kcal)"]
   },
 
   testimonials: [

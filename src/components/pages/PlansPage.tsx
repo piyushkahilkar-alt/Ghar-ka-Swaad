@@ -530,8 +530,8 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
                             <div className="bg-red-50 p-4 rounded-xl border border-red-100 flex items-start gap-3 mb-4">
                                <span className="text-2xl mt-1">🎓</span>
                                <div>
-                                  <p className="font-bold text-red-700">₹50 Student Discount Applied!</p>
-                                  <p className="text-xs text-red-600">Please provide your student details below.</p>
+                                  <p className="font-bold text-red-700">Student Details Required</p>
+                                  <p className="text-xs text-red-600">Please provide your student details to verify your identity.</p>
                                </div>
                             </div>
                         )}
@@ -589,9 +589,15 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
                             return;
                         }
                         
+                        const today = new Date();
+                        const isOfferDay = today.getMonth() === 5 && today.getDate() === 8; // June 8th
                         let finalAmt = baseAmount;
                         if (selectedPlan.id === 0) {
-                            finalAmt = isStudent ? 49 : 59;
+                            if (isStudent && isOfferDay) {
+                                finalAmt = Math.round(baseAmount * 0.5); // 50% off
+                            } else {
+                                finalAmt = baseAmount; // 79 otherwise
+                            }
                         } else if (selectedPlan.id !== 0 && isStudent) {
                             finalAmt -= 100; // Monthly KDK discount
                         }
@@ -614,22 +620,10 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
                         <span>Original Price</span>
                         <span className="font-bold">₹{baseAmount}</span>
                      </div>
-                     {selectedPlan.id !== 0 && isStudent && (
+                     {baseAmount > (customAmount || 0) && (
                      <div className="flex justify-between items-center text-green-600 font-bold">
-                        <span>Student Discount</span>
-                        <span>- ₹100</span>
-                     </div>
-                     )}
-                     {selectedPlan.id === 0 && isStudent && (
-                     <div className="flex justify-between items-center text-green-600 font-bold">
-                        <span>Student Discount</span>
-                        <span>- ₹50</span>
-                     </div>
-                     )}
-                     {selectedPlan.id === 0 && !isStudent && (
-                     <div className="flex justify-between items-center text-green-600 font-bold">
-                        <span>Trial Promotional Discount</span>
-                        <span>- ₹40</span>
+                        <span>Discount Applied</span>
+                        <span>- ₹{baseAmount - (customAmount || 0)}</span>
                      </div>
                      )}
                      <div className="w-full h-px bg-gray-200 my-2"></div>
