@@ -11,6 +11,7 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
   const [userData, setUserData] = useState<any>(null);
   const [orders, setOrders] = useState<any>(null);
   const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
+  const [allPayments, setAllPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -149,6 +150,19 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
                   index === self.findIndex((t) => t.plan === payment.plan)
               );
               setPaymentHistory(uniquePayments);
+
+              if (localUser.email === 'piyushkahilkar@gmail.com') {
+                  const allPayQuery = query(paymentsRef);
+                  const allPaySnap = await getDocs(allPayQuery);
+                  const allPayList = allPaySnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                  allPayList.sort((a: any, b: any) => {
+                      const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+                      const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+                      return timeB - timeA;
+                  });
+                  setAllPayments(allPayList);
+              }
+
           } catch(paymentErr) {
               console.error("Error fetching payments", paymentErr);
           }
@@ -792,6 +806,116 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
             )}
           </div>
         </motion.div>
+
+        {userData?.email === 'piyushkahilkar@gmail.com' && allPayments.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="md:col-span-3 mt-8 bg-white p-6 md:p-8 rounded-3xl shadow-xl border-2 border-red-500/20"
+          >
+            <div className="flex items-center gap-3 mb-6">
+              <span className="text-2xl">👑</span>
+              <h2 className="text-2xl font-serif font-bold text-red-600">Admin Dashboard - All Orders</h2>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b-2 border-gray-100 bg-gray-50 uppercase text-gray-500 tracking-wider">
+                    <th className="p-4 font-bold rounded-tl-xl">Date</th>
+                    <th className="p-4 font-bold">User</th>
+                    <th className="p-4 font-bold">Plan Details</th>
+                    <th className="p-4 font-bold">Student Check</th>
+                    <th className="p-4 font-bold rounded-tr-xl hover:text-red-500 cursor-pointer">Receipt</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {allPayments.map((payment) => (
+                    <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="p-4 text-gray-600 whitespace-nowrap">
+                        {new Date(payment.createdAt).toLocaleDateString()}<br/>
+                        <span className="text-xs">{new Date(payment.createdAt).toLocaleTimeString()}</span>
+                      </td>
+                      <td className="p-4">
+                        <p className="font-bold text-gray-900">{payment.userId}</p>
+                        <span className="inline-block px-2 py-1 bg-yellow-100 text-yellow-800 text-[10px] font-bold rounded mt-1">
+                          {payment.status}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <p className="font-bold text-brand-primary">{payment.plan}</p>
+                        <p className="font-bold text-gray-900">Paid: ₹{payment.amount}</p>
+                        {payment.studentInfo && (
+                          <p className="text-xs text-green-600 font-bold">Original: ₹{payment.amount + payment.studentInfo.discountRecieved}</p>
+                        )}
+                      </td>
+                      <td className="p-4">
+                        {payment.studentInfo ? (
+                          <div className="bg-red-50 p-2 rounded border border-red-100 min-w-[200px] mb-2">
+                            <p className="text-xs font-bold text-red-700 mb-1">KDK Student Verified</p>
+                            <p className="text-xs text-gray-700">Roll: <strong>{payment.studentInfo.rollNumber}</strong></p>
+                            <p className="text-xs text-gray-700">Branch: <strong>{payment.studentInfo.courseBranch}</strong></p>
+                            {payment.studentInfo.studentIdImage && (
+                              <button onClick={() => {
+                                 const w = window.open('about:blank', '_blank');
+                                 if (w) w.document.write(`<img src="${payment.studentInfo.studentIdImage}" style="max-width:100%"/>`);
+                              }} className="text-xs text-blue-600 hover:underline mt-1 font-bold">View ID Card</button>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400 block mb-2">Regular Customer</span>
+                        )}
+                        {payment.trialOfferInfo && (
+                          <div className="bg-orange-50 p-2 rounded border border-orange-100 min-w-[200px]">
+                            <p className="text-xs font-bold text-orange-700 mb-1">🔥 Trial Offer Unlocked</p>
+                            <div className="flex flex-col gap-1 items-start">
+                              {payment.trialOfferInfo.igFollowImage && (
+                                <button onClick={() => {
+                                   const w = window.open('about:blank', '_blank');
+                                   if (w) w.document.write(`<img src="${payment.trialOfferInfo.igFollowImage}" style="max-width:100%"/>`);
+                                }} className="text-xs text-blue-600 hover:underline font-bold">View IG Follow</button>
+                              )}
+                              {payment.trialOfferInfo.igStoryImage && (
+                                <button onClick={() => {
+                                   const w = window.open('about:blank', '_blank');
+                                   if (w) w.document.write(`<img src="${payment.trialOfferInfo.igStoryImage}" style="max-width:100%"/>`);
+                                }} className="text-xs text-blue-600 hover:underline font-bold">View IG Story</button>
+                              )}
+                              {payment.trialOfferInfo.reviewImage && (
+                                <button onClick={() => {
+                                   const w = window.open('about:blank', '_blank');
+                                   if (w) w.document.write(`<img src="${payment.trialOfferInfo.reviewImage}" style="max-width:100%"/>`);
+                                }} className="text-xs text-blue-600 hover:underline font-bold">View Review</button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-4">
+                        {payment.screenshot ? (
+                          <button 
+                            onClick={async () => {
+                               // Open image in new tab. Very big dataURLs might be blocked. Using iframe workaround or window.open
+                               const w = window.open('about:blank', '_blank');
+                               if (w) {
+                                  w.document.write(`<img src="${payment.screenshot}" style="max-width:100%"/>`);
+                               }
+                            }}
+                            className="bg-brand-primary text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-brand-dark transition-colors"
+                          >
+                            View Receipt
+                          </button>
+                        ) : (
+                          <span className="text-xs text-gray-400">No Receipt</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+        )}
 
       </div>
     </div>

@@ -52,8 +52,15 @@ export default function HomePage({ onNavigate }: HomePageProps) {
 
   return (
     <div className="flex flex-col">
+      {/* June 8 Promotional Banner */}
+      <div className="bg-gradient-to-r from-red-600 to-orange-500 text-white text-center py-3 px-4 font-bold shadow-lg absolute top-0 w-full z-[100] flex justify-center items-center gap-2">
+         <span className="text-xl">🎉</span>
+         <span>SPECIAL ANNOUNCEMENT: On 8th June, get 50% OFF on Trial Meals! Valid for the first 100 registered customers only.</span>
+         <span className="text-xl">🎉</span>
+      </div>
+
       {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex items-center pt-20 overflow-hidden">
+      <section className="relative min-h-[90vh] flex items-center pt-24 overflow-hidden">
         <div className="absolute inset-0 z-0 overflow-hidden">
           <motion.img 
             initial={{ scale: 1, x: 0, y: 0 }}
@@ -75,10 +82,22 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5 }}
+              className="flex flex-col items-center"
             >
-               <span className="inline-block py-2 px-6 bg-brand-accent/90 text-white rounded-full text-sm sm:text-base font-bold tracking-widest uppercase mb-6 shadow-lg backdrop-blur-md">
-                 ₹50 OFF First Week
+               <span className="inline-block py-2 px-6 bg-gradient-to-r from-brand-accent to-red-600 text-white rounded-full text-sm sm:text-base font-bold tracking-wider uppercase mb-2 shadow-lg backdrop-blur-md border border-white/20">
+                 🎓 KDK College Student Special & 🔥 ₹49 Trial
                </span>
+               <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
+                 <p className="text-white text-lg sm:text-xl font-bold drop-shadow-md bg-black/30 px-3 py-1 rounded-lg backdrop-blur-sm">
+                   Get ₹100 OFF on Monthly Tiffin Plans
+                 </p>
+                 <p className="text-white text-lg sm:text-xl font-bold drop-shadow-md bg-brand-primary/80 px-3 py-1 rounded-lg backdrop-blur-sm">
+                   🔥 Trial Meal for ₹49
+                 </p>
+               </div>
+               <p className="text-white/80 text-xs sm:text-sm font-medium mb-6 backdrop-blur-sm drop-shadow-md">
+                 Valid only for verified KDK College students with a valid Student ID Card. ⭐ Upload Proof & Unlock Discount.
+               </p>
             </motion.div>
             <motion.h1 
               initial={{ opacity: 0, y: 30 }}
@@ -92,10 +111,10 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4, duration: 0.6 }}
-              className="text-xl md:text-3xl text-gray-200 font-serif italic mb-10 max-w-3xl drop-shadow-lg"
+              className="text-xl md:text-3xl text-gray-200 font-serif mb-10 max-w-3xl drop-shadow-lg"
             >
               "घर जैसा खाना, रोज आपके दरवाजे तक" <br/>
-              <span className="text-base md:text-xl font-sans not-italic text-gray-300 mt-5 block uppercase tracking-wider font-semibold">Nagpur's most trusted home-cooked meal subscription</span>
+              <span className="text-base md:text-xl font-sans text-gray-300 mt-5 block uppercase tracking-wider font-semibold">Nagpur's most trusted home-cooked meal subscription</span>
             </motion.p>
             
             <motion.div 
@@ -122,6 +141,95 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               </a>
             </motion.div>
           </div>
+        </div>
+      </section>
+
+      {/* KDK Student Offer Section */}
+      <section className="py-12 bg-gray-50 border-b border-gray-200">
+        <div className="container mx-auto px-4 max-w-4xl space-y-8">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100 relative group"
+          >
+            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-brand-accent to-red-500"></div>
+            <div className="p-8 md:p-10 flex flex-col md:flex-row items-center gap-8">
+              <div className="flex-1">
+                <span className="inline-block px-3 py-1 bg-red-100 text-red-600 rounded-lg text-xs font-bold uppercase tracking-wider mb-4 border border-red-200">
+                  Limited Time
+                </span>
+                <h3 className="text-3xl font-serif font-bold text-gray-900 mb-4">KDK Exclusive Student Offer</h3>
+                <ul className="space-y-3 mb-6">
+                  {[
+                    "₹100 Instant Discount",
+                    "Homemade Food",
+                    "Daily Fresh Meals",
+                    "Student Friendly Pricing",
+                    "Verification via College ID Card"
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-center text-gray-700 font-medium font-sans">
+                      <CheckCircle2 size={18} className="text-green-500 mr-3 flex-shrink-0" /> {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="w-full md:w-auto flex flex-col items-center">
+                 <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 text-center mb-6 w-full shadow-sm">
+                   <p className="text-sm text-gray-500 font-bold uppercase mb-1">Save Up To</p>
+                   <p className="text-5xl font-black text-brand-primary">₹100<span className="text-2xl">/mo</span></p>
+                 </div>
+                 <button 
+                  onClick={(e) => { e.preventDefault(); onNavigate('plans'); }}
+                  className="w-full py-4 px-8 bg-brand-primary text-white rounded-xl font-bold hover:bg-brand-dark transition-all shadow-md hover:shadow-xl active:scale-95"
+                 >
+                   Claim Student Offer
+                 </button>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl overflow-hidden border border-orange-100 relative group"
+          >
+            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-orange-400 to-yellow-500"></div>
+            <div className="p-8 md:p-10 flex flex-col md:flex-row items-center gap-8">
+              <div className="flex-1">
+                <span className="inline-block px-3 py-1 bg-orange-100 text-orange-600 rounded-lg text-xs font-bold uppercase tracking-wider mb-4 border border-orange-200">
+                  🔥 Student & Community Trial Offer
+                </span>
+                <h3 className="text-3xl font-serif font-bold text-gray-900 mb-2">Try Ghar Ka Swaad for Just ₹49</h3>
+                <p className="text-gray-500 font-medium mb-4">Complete the required steps and unlock the discounted trial meal.</p>
+                <ul className="space-y-3 mb-6">
+                  <li className="flex items-center text-gray-700 font-medium font-sans">
+                    <CheckCircle2 size={18} className="text-orange-500 mr-3 flex-shrink-0" /> Follow our Instagram page
+                  </li>
+                  <li className="flex items-center text-gray-700 font-medium font-sans">
+                    <CheckCircle2 size={18} className="text-orange-500 mr-3 flex-shrink-0" /> Share our story/post on Instagram
+                  </li>
+                  <li className="flex items-center text-gray-700 font-medium font-sans">
+                    <CheckCircle2 size={18} className="text-orange-500 mr-3 flex-shrink-0" /> Submit proof screenshots
+                  </li>
+                </ul>
+              </div>
+              <div className="w-full md:w-auto flex flex-col items-center">
+                 <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100 text-center mb-6 w-full shadow-sm relative overflow-hidden">
+                   <div className="absolute -top-3 -right-3 text-red-500/10 rotate-12"><Star size={100} fill="currentColor" /></div>
+                   <p className="text-sm text-gray-500 font-bold uppercase mb-1 line-through">Original: ₹79</p>
+                   <p className="text-5xl font-black text-orange-600 relative z-10">₹49<span className="text-2xl"></span></p>
+                 </div>
+                 <button 
+                  onClick={(e) => { e.preventDefault(); onNavigate('plans'); }}
+                  className="w-full py-4 px-8 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition-all shadow-md hover:shadow-xl active:scale-95"
+                 >
+                   Unlock Trial Offer
+                 </button>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
 
@@ -219,7 +327,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
              >
                SUBSCRIBE NOW
              </a>
-             <div className="text-white/80 font-serif italic text-lg leading-tight text-center sm:text-left">
+             <div className="text-white/80 font-serif text-lg leading-tight text-center sm:text-left">
                “Refer & Earn ₹100 for every friend who joins!”
              </div>
           </div>
@@ -252,7 +360,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                 <div className="flex gap-1 text-yellow-400 mb-4">
                   {[...Array(5)].map((_, i) => <Star key={i} size={16} fill="currentColor" />)}
                 </div>
-                <p className="text-gray-700 font-serif text-lg italic mb-6">"{t.review}"</p>
+                <p className="text-gray-700 font-serif text-lg mb-6">"{t.review}"</p>
                 <div className="flex items-center gap-3">
                   <img src={t.image} alt={t.name} className="w-10 h-10 object-cover rounded-full border-2 border-brand-primary/20" />
                   <div>

@@ -107,7 +107,7 @@ export default function TrackOrderPage() {
                  </div>
                  <div>
                     <h3 className="text-xl font-serif font-bold">Delivery Location</h3>
-                    <p className="text-gray-500 text-sm italic">{trackResult.location?.address || 'Your Registered Address'}</p>
+                    <p className="text-gray-500 text-sm">{trackResult.location?.address || 'Your Registered Address'}</p>
                  </div>
               </div>
 
@@ -181,7 +181,7 @@ export default function TrackOrderPage() {
                           </div>
                           <div>
                              <h4 className="font-bold text-lg">Today's Box</h4>
-                             <p className="text-sm text-gray-400 italic">Chef's Special Thali (Paneer Butter Masala, Roti, Rice)</p>
+                             <p className="text-sm text-gray-400">Chef's Special Thali (Paneer Butter Masala, Roti, Rice)</p>
                           </div>
                        </div>
                        {plan.isPaused ? (
@@ -205,7 +205,7 @@ export default function TrackOrderPage() {
           {!trackResult && !isLoading && !errorMsg && (
             <div className="text-center py-12 opacity-30">
                <Package size={80} className="mx-auto mb-4" />
-               <p className="font-serif italic text-xl">Waiting for your magic number...</p>
+               <p className="font-serif text-xl">Waiting for your magic number...</p>
             </div>
           )}
         </div>

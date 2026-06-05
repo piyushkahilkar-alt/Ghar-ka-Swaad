@@ -123,7 +123,7 @@ export default function MenuPage() {
                   />
                   <div className="absolute inset-0 bg-black/40"></div>
                   <div className="relative text-white text-center p-8">
-                     <h3 className="text-2xl font-serif font-bold italic mb-2">"Health is wealth, started from your plate."</h3>
+                     <h3 className="text-2xl font-serif font-bold mb-2">"Health is wealth, started from your plate."</h3>
                   </div>
               </div>
            </div>

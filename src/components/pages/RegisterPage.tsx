@@ -73,10 +73,13 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
         }
       }
 
-      setSuccess('Google Registration successful! Redirecting to dashboard...');
+      setSuccess('Google Registration successful! Redirecting...');
       setTimeout(() => {
+        const addressJoined = [address, landmark, city].filter(Boolean).join(', ');
+        const whatsappText = `New Ghar Ka Swaad Registration\n\nName: ${user.displayName || "Customer"}\nPhone: ${user.phoneNumber || user.email || ""}\nAddress: ${addressJoined || "No Address"}\nPlan: N/A\nAmount Paid: 0\n\nUser Registered Successfully!`;
+        window.open(`https://wa.me/${BRAND_DATA.brand.whatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(whatsappText)}`, '_blank');
         onNavigate('dashboard');
-      }, 200);
+      }, 800);
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Google Registration failed');
@@ -177,10 +180,13 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
          console.error("Webhook frontend catch:", e);
       }
       
-      setSuccess('Registration successful! Redirecting to dashboard...');
+      setSuccess('Registration successful! Redirecting...');
       setTimeout(() => {
+        const addressJoined = [address, landmark, city].filter(Boolean).join(', ');
+        const whatsappText = `New Ghar Ka Swaad Registration\n\nName: ${name}\nPhone: ${phone || email}\nAddress: ${addressJoined || address}\nPlan: N/A\nAmount Paid: 0\n\nUser Registered Successfully!`;
+        window.open(`https://wa.me/${BRAND_DATA.brand.whatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(whatsappText)}`, '_blank');
         onNavigate('dashboard');
-      }, 200);
+      }, 800);
       
     } catch (err: any) {
       console.error(err);

@@ -55,6 +55,15 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
   const [isProcessingInfo, setIsProcessingInfo] = useState('');
 
   const [customAmount, setCustomAmount] = useState<number | ''>('');
+  const [baseAmount, setBaseAmount] = useState<number>(0);
+  
+  // Student KDK details
+  const [isStudent, setIsStudent] = useState<boolean | null>(null);
+  const [studentIdImage, setStudentIdImage] = useState<string | null>(null);
+  const [rollNumber, setRollNumber] = useState('');
+  const [courseBranch, setCourseBranch] = useState('');
+  
+  // Trial Offer Details removed
   
   // Custom UPI QR Payment states
   const [countdown, setCountdown] = useState(300);
@@ -79,8 +88,19 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
 
   const initiatePayment = (plan: any) => {
     setSelectedPlan(plan);
-    setCustomAmount(parseInt(plan.monthly_price.toString().replace(/[^0-9]/g, ''), 10) || 0);
-    setCheckoutStep(1); // Proceed to amount adjustment step
+    const planPrice = parseInt(plan.monthly_price.toString().replace(/[^0-9]/g, ''), 10) || 0;
+    setBaseAmount(planPrice);
+    setCustomAmount(planPrice);
+    
+    // Reset student states
+    setIsStudent(null);
+    setStudentIdImage(null);
+    setRollNumber('');
+    setCourseBranch('');
+    
+    // Reset trial offer states removed
+    
+    setCheckoutStep(0); // Proceed to step 0
   };
 
   const handleProceedToPayment = async () => {
@@ -88,6 +108,18 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
         toast.error("Please enter a valid amount.");
         return;
     }
+    if (isStudent) {
+        if (!studentIdImage) {
+            toast.error("Please upload your Student ID Card.");
+            return;
+        }
+        if (!rollNumber.trim() || !courseBranch.trim()) {
+            toast.error("Please fill in Roll Number and Course/Branch.");
+            return;
+        }
+    }
+    
+
 
     const userStr = localStorage.getItem('user');
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
@@ -139,6 +171,80 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
     reader.readAsDataURL(file);
   };
 
+  const handleDynamicImageUpload = (e: any, setFn: (val: string | null) => void) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+       const img = new Image();
+       img.onload = () => {
+           const canvas = document.createElement('canvas');
+           const MAX_WIDTH = 800;
+           const MAX_HEIGHT = 800;
+           let width = img.width;
+           let height = img.height;
+           if (width > height) {
+               if (width > MAX_WIDTH) {
+                   height *= MAX_WIDTH / width;
+                   width = MAX_WIDTH;
+               }
+           } else {
+               if (height > MAX_HEIGHT) {
+                   width *= MAX_HEIGHT / height;
+                   height = MAX_HEIGHT;
+               }
+           }
+           canvas.width = width;
+           canvas.height = height;
+           const ctx = canvas.getContext('2d');
+           if (ctx) {
+             ctx.drawImage(img, 0, 0, width, height);
+             const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+             setFn(dataUrl);
+           }
+       };
+       img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleStudentIdUpload = (e: any) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+       const img = new Image();
+       img.onload = () => {
+           const canvas = document.createElement('canvas');
+           const MAX_WIDTH = 800;
+           const MAX_HEIGHT = 800;
+           let width = img.width;
+           let height = img.height;
+           if (width > height) {
+               if (width > MAX_WIDTH) {
+                   height *= MAX_WIDTH / width;
+                   width = MAX_WIDTH;
+               }
+           } else {
+               if (height > MAX_HEIGHT) {
+                   width *= MAX_HEIGHT / height;
+                   height = MAX_HEIGHT;
+               }
+           }
+           canvas.width = width;
+           canvas.height = height;
+           const ctx = canvas.getContext('2d');
+           if (ctx) {
+             ctx.drawImage(img, 0, 0, width, height);
+             const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+             setStudentIdImage(dataUrl);
+           }
+       };
+       img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleFinalSubmit = async () => {
     if (!paymentScreenshot) {
         toast.error("Please upload payment screenshot.");
@@ -157,6 +263,16 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
         const expiryDate = new Date();
         expiryDate.setDate(expiryDate.getDate() + 30);
         
+        const studentInfo = isStudent ? {
+            isStudent: true,
+            rollNumber,
+            courseBranch,
+            studentIdImage,
+            discountRecieved: 100
+        } : null;
+
+        const trialOfferInfo = null;
+
         const newSubInfo = {
            status: 'active',
            planName: planWithCustomAmount.name,
@@ -169,7 +285,9 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
            amountPaid: customAmount,
            paymentStatus: 'Pending Verification',
            screenshot: paymentScreenshot,
-           transactionId: transactionId
+           transactionId: transactionId,
+           studentInfo,
+           trialOfferInfo
         };
 
         // Save to Firestore payments collection
@@ -182,7 +300,9 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
             plan: planWithCustomAmount.name,
             createdAt: new Date().toISOString(),
             screenshot: paymentScreenshot,
-            transactionId: transactionId
+            transactionId: transactionId,
+            studentInfo,
+            trialOfferInfo
         });
 
         // Save to Users collection
@@ -217,7 +337,24 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
 
         setCheckoutStep(4); // Success
 
-        const whatsappMsg = `Hello Ghar Ka Swaad,\n\nI have completed payment.\nName: ${sheetData.name}\nMobile: ${sheetData["mobile no"]}\nPlan: ${sheetData.plan}\nAmount: ₹${sheetData["amount paid"]}\nTransaction ID: ${transactionId || paymentId}\n\nPayment screenshot has been uploaded.\nPlease verify and activate my plan.`;
+        let uploadedScreenshotsCount = 1; // payment receipt is 1
+        if (isStudent && studentIdImage) uploadedScreenshotsCount++;
+
+        let whatsappMsg = '';
+        const adminUrl = typeof window !== 'undefined' ? window.location.origin + '/dashboard' : 'https://gharkaswaadngp.vercel.app/dashboard';
+        
+        if (selectedPlan.id === 0) {
+            whatsappMsg = `New Ghar Ka Swaad Trial Request\n\nName: ${sheetData.name}\nPhone: ${sheetData["mobile no"]}\nAddress: ${sheetData.location}\n\nPlan: ${sheetData.plan}\nAmount Paid: ₹${customAmount}\n\nKDK Student: ${isStudent ? 'Yes' : 'No'}${isStudent ? `\nRoll No: ${rollNumber}` : ''}\n\nUploads:\n`;
+            
+            if (paymentScreenshot) whatsappMsg += `Payment Receipt: ${adminUrl}\n`;
+            if (isStudent && studentIdImage) {
+                whatsappMsg += `Student ID Card: ${adminUrl}\n`;
+            }
+            
+            whatsappMsg += `\nPlease verify and approve.`;
+        } else {
+            whatsappMsg = `New Ghar Ka Swaad Order\n\nName: ${sheetData.name}\nPhone: ${sheetData["mobile no"]}\nAddress: ${sheetData.location}\n\nPlan: ${sheetData.plan}\nAmount Paid: ₹${sheetData["amount paid"]}\nTransaction ID: ${transactionId || paymentId}\n\nKDK Student: ${isStudent ? 'Yes' : 'No'}${isStudent ? `\nRoll Number: ${rollNumber}` : ''}\n\nPayment Completed Successfully.\nPlease verify.`;
+        }
 
         setTimeout(() => {
             window.open(`https://wa.me/918275116821?text=${encodeURIComponent(whatsappMsg)}`, '_blank');
@@ -266,6 +403,9 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
               )}
               
               <div className="mb-6">
+                <div className="bg-red-50 text-red-600 text-[10px] font-bold uppercase py-1 px-2 rounded flex items-center justify-center gap-1 mb-3 border border-red-100">
+                  <span role="img" aria-label="student">🎓</span> KDK Student Offer Available
+                </div>
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-gray-400">
                     {plan.id === 0 && <Utensils size={24} />}
@@ -276,7 +416,7 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
                   </span>
                   <h3 className="text-xl font-serif font-bold leading-tight">{plan.name}</h3>
                 </div>
-                <p className="text-sm text-gray-600 mb-5 line-clamp-2">{plan.description}</p>
+                <p className="text-sm text-gray-600 mb-5">{plan.description}</p>
                 <div className="flex items-baseline gap-1">
                   <span className="text-3xl font-bold">₹{plan.monthly_price}</span>
                   {plan.id !== 0 && <span className="text-gray-500 text-sm">/ month</span>}
@@ -290,7 +430,7 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
                 <p className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-4">What's included:</p>
                 <ul className="space-y-3 mb-8">
                   {plan.menu.map((item, i) => (
-                    <li key={i} className="flex items-start gap-3 text-gray-800 font-serif italic text-base leading-tight">
+                    <li key={i} className="flex items-start gap-3 text-gray-800 font-serif text-base leading-tight">
                       <div className="w-5 h-5 bg-brand-primary/10 text-brand-primary rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                         <Check size={12} />
                       </div>
@@ -346,21 +486,157 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
                 <X size={18} />
               </button>
 
-              {checkoutStep === 1 ? (
-                <div className="py-8 flex flex-col items-center justify-center text-center">
+              {checkoutStep === 0 ? (
+                <div className="py-4 flex flex-col items-center justify-center text-center">
+                  <h3 className="text-2xl font-serif font-bold mb-4">Verification Steps</h3>
+                  
+                  {selectedPlan.id === 0 && (
+                     <div className="w-full text-left bg-orange-50 border border-orange-100 rounded-2xl p-6 mb-6">
+                        <h4 className="font-bold text-orange-800 mb-1">Trial Plan Selected</h4>
+                        <p className="text-sm text-orange-600 mb-4">Registration and login are required to continue.</p>
+                     </div>
+                  )}
+
+                  <div className="w-full text-left bg-gray-50 border border-gray-100 p-6 rounded-2xl mb-6">
+                    <p className="text-gray-800 font-bold mb-4">Are you a KDK College Student?</p>
+                    
+                    <div className="flex gap-4 w-full mb-6 relative z-10">
+                      <button 
+                        onClick={() => setIsStudent(true)}
+                        className={`flex-1 py-3 rounded-xl border-2 font-bold transition-all ${isStudent === true ? 'border-brand-primary bg-brand-primary/5 text-brand-primary' : 'border-gray-200 text-gray-500 hover:border-brand-primary/50 bg-white'}`}
+                      >
+                        Yes, I am
+                      </button>
+                      <button 
+                        onClick={() => setIsStudent(false)}
+                        className={`flex-1 py-3 rounded-xl border-2 font-bold transition-all ${isStudent === false ? 'border-brand-primary bg-brand-primary/5 text-brand-primary' : 'border-gray-200 text-gray-500 hover:border-brand-primary/50 bg-white'}`}
+                      >
+                        No
+                      </button>
+                    </div>
+
+                    {isStudent === true && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="w-full text-left space-y-4">
+                        {selectedPlan.id !== 0 && (
+                            <div className="bg-red-50 p-4 rounded-xl border border-red-100 flex items-start gap-3 mb-4">
+                               <span className="text-2xl mt-1">🎓</span>
+                               <div>
+                                  <p className="font-bold text-red-700">₹100 Student Discount Applied!</p>
+                                  <p className="text-xs text-red-600">Please provide your details below.</p>
+                               </div>
+                            </div>
+                        )}
+                        {selectedPlan.id === 0 && (
+                            <div className="bg-red-50 p-4 rounded-xl border border-red-100 flex items-start gap-3 mb-4">
+                               <span className="text-2xl mt-1">🎓</span>
+                               <div>
+                                  <p className="font-bold text-red-700">₹50 Student Discount Applied!</p>
+                                  <p className="text-xs text-red-600">Please provide your student details below.</p>
+                               </div>
+                            </div>
+                        )}
+                        
+                        <div>
+                          <label className="block text-sm font-bold text-gray-700 mb-2">Upload Student ID Card</label>
+                          <div className={`w-full aspect-video rounded-2xl border-2 border-dashed flex flex-col items-center justify-center overflow-hidden transition-all relative ${studentIdImage ? 'border-green-500 bg-green-50' : 'border-gray-300 hover:border-brand-primary bg-white'}`}>
+                            {studentIdImage ? (
+                              <img src={studentIdImage} alt="ID Card" className="w-full h-full object-contain" />
+                            ) : (
+                              <>
+                                <UploadCloud size={32} className="text-gray-400 mb-2" />
+                                <p className="text-sm text-gray-500">Tap to upload ID</p>
+                              </>
+                            )}
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              onChange={handleStudentIdUpload} 
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">Roll Number</label>
+                            <input 
+                              type="text" 
+                              value={rollNumber}
+                              onChange={(e) => setRollNumber(e.target.value)}
+                              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-primary outline-none"
+                              placeholder="e.g. 45"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">Branch/Course</label>
+                            <input 
+                              type="text" 
+                              value={courseBranch}
+                              onChange={(e) => setCourseBranch(e.target.value)}
+                              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-primary outline-none"
+                              placeholder="e.g. CSE"
+                            />
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+
+                  <button 
+                    onClick={() => {
+                        if (isStudent === null) {
+                            toast.error("Please answer if you are a KDK student");
+                            return;
+                        }
+                        
+                        let finalAmt = baseAmount;
+                        if (selectedPlan.id === 0) {
+                            finalAmt = isStudent ? 49 : 59;
+                        } else if (selectedPlan.id !== 0 && isStudent) {
+                            finalAmt -= 100; // Monthly KDK discount
+                        }
+                        setCustomAmount(finalAmt);
+                        
+                        setCheckoutStep(1);
+                    }}
+                    className="w-full py-4 rounded-2xl font-bold bg-brand-primary text-white transition-all hover:bg-brand-dark hover:scale-105 active:scale-95"
+                  >
+                    Continue
+                  </button>
+                </div>
+              ) : checkoutStep === 1 ? (
+                 <div className="py-8 flex flex-col items-center justify-center text-center">
                   <h3 className="text-2xl font-serif font-bold mb-2">Confirm Payment</h3>
                   <p className="text-gray-500 mb-6">You selected <strong>{selectedPlan.name}</strong>.</p>
                   
-                  <div className="w-full text-left mb-6">
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Adjust Amount (₹)</label>
-                    <input 
-                      type="number"
-                      value={customAmount}
-                      onChange={(e) => setCustomAmount(Number(e.target.value))}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all"
-                      placeholder="Enter amount"
-                    />
-                    <p className="text-xs text-gray-400 mt-2">Default amount is ₹{selectedPlan.monthly_price}</p>
+                  <div className="w-full bg-gray-50 p-6 rounded-2xl border border-gray-100 mb-8 space-y-3">
+                     <div className="flex justify-between items-center text-gray-600">
+                        <span>Original Price</span>
+                        <span className="font-bold">₹{baseAmount}</span>
+                     </div>
+                     {selectedPlan.id !== 0 && isStudent && (
+                     <div className="flex justify-between items-center text-green-600 font-bold">
+                        <span>Student Discount</span>
+                        <span>- ₹100</span>
+                     </div>
+                     )}
+                     {selectedPlan.id === 0 && isStudent && (
+                     <div className="flex justify-between items-center text-green-600 font-bold">
+                        <span>Student Discount</span>
+                        <span>- ₹50</span>
+                     </div>
+                     )}
+                     {selectedPlan.id === 0 && !isStudent && (
+                     <div className="flex justify-between items-center text-green-600 font-bold">
+                        <span>Trial Promotional Discount</span>
+                        <span>- ₹40</span>
+                     </div>
+                     )}
+                     <div className="w-full h-px bg-gray-200 my-2"></div>
+                     <div className="flex justify-between items-center text-xl">
+                        <span className="font-bold text-gray-900">Final Price</span>
+                        <span className="font-black text-brand-primary">₹{customAmount}</span>
+                     </div>
                   </div>
 
                   <button 
@@ -451,8 +727,8 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
                   <div className="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center mb-6">
                     <Check size={40} />
                   </div>
-                  <h3 className="text-2xl font-serif font-bold mb-2">Subscription Confirmed!</h3>
-                  <p className="text-gray-500 mb-8">Your {selectedPlan.name} is now active. You can track your meals in the dashboard.</p>
+                  <h3 className="text-2xl font-serif font-bold mb-2">Thank you for your order!</h3>
+                  <p className="text-gray-500 mb-8 font-medium">Please press Send in WhatsApp to complete your order notification.</p>
                   <button 
                     onClick={() => {
                        setSelectedPlan(null);

@@ -11,21 +11,21 @@ export const BRAND_DATA = {
   },
 
   locations: [
-    "Nandanvan", "Tiranga Square", "Garba Maidan", "Darshan Colony", 
-    "Kharabi", "Vathoda", "Sakkardara", "Reshimbagh", 
-    "Dighori", "Bhandewadi"
+    "Nandanvan", "Ashok Nagar", "Chapru Nagar", "Jagnade Square", 
+    "Ganesh Nagar", "Guru Dev Nagar", "Shree Krishna Nagar", 
+    "Vyankatesh Nagar", "Shashtri Nagar", "Darshan Colony"
   ],
 
   plans: [
     {
       id: 0,
-      name: "1-Day Trial Meal",
-      price_per_meal: 80,
-      monthly_price: "80 (One Time)",
-      meals_per_day: 2,
+      name: "Trial Offer",
+      price_per_meal: 99,
+      monthly_price: "99 (One Time)",
+      meals_per_day: 1,
       menu: ["Standard Meal", "Taste our quality", "Dal, Rice, Roti, Sabzi", "Salad/Raita"],
       target: "First Timers",
-      description: "Taste before you subscribe! Perfect for checking our food quality."
+      description: "The trial mill is available for two days. The trial mill is applicable for today only. The trial mill is for the first 100 trials. Registration and login are required for this."
     },
     {
       id: 1,
@@ -50,13 +50,12 @@ export const BRAND_DATA = {
   ],
 
   daily_menu: {
-    monday: ["Dal Tadka", "Jeera Rice", "Roti", "Aloo Gobi", "Salad", "(Jain: Lauki Sabzi)"],
-    tuesday: ["Mix Veg Curry", "Roti", "Rice", "Buttermilk", "(Jain: Tinda/Lauki)"],
-    wednesday: ["Rajma Masala", "Rice", "Roti", "Salad", "(NV: Chicken Curry)", "(Jain: Rajma Jain Style)"],
-    thursday: ["Veg Biryani", "Raita", "Gulab Jamun", "(Jain: Jain Veg Pulao)"],
-    friday: ["Chole Masala", "Rice", "Roti", "Salad", "(Jain: Chole No Onion/Garlic)"],
-    saturday: ["Paneer Butter Masala", "Roti", "Rice", "(NV: Egg Curry)", "(NV: Chicken Masala)", "(Jain: Paneer Jain Style)"],
-    sunday: ["Paneer Biryani", "Raita", "Salad", "Kheer", "(NV: Chicken/Mutton Biryani)", "(Jain: Jain Veg Pulao)"]
+    monday: ["Dal Tadka (~150 kcal)", "Rice (~130 kcal)", "Roti (~120 kcal)", "Aloogobi (~140 kcal)", "Salad (~20 kcal)", "Aachar (~30 kcal)"],
+    tuesday: ["Dal Tadka (~150 kcal)", "Rice (~130 kcal)", "Roti (~120 kcal)", "Mix Veg (~130 kcal)", "Salad (~20 kcal)", "Aachar (~30 kcal)"],
+    wednesday: ["Dal Tadka (~150 kcal)", "Rice (~130 kcal)", "Pattagobi (~110 kcal)", "Salad (~20 kcal)", "Aachar (~30 kcal)", "(NV: Anda Curry ~200 kcal)"],
+    thursday: ["Dal Tadka (~150 kcal)", "Rice (~130 kcal)", "Baigan & Mix Veg (~140 kcal)", "Salad (~20 kcal)", "Aachar (~30 kcal)", "Roti (~120 kcal)"],
+    friday: ["Dal Tadka (~150 kcal)", "Rice (~130 kcal)", "Rajma Masala (~180 kcal)", "Salad (~20 kcal)", "Aachar (~30 kcal)", "Roti (~120 kcal)"],
+    sunday: ["Morning: South Indian Nasta (~300 kcal)", "Night: Veg Pulao & Kadi (~400 kcal)", "(NV: Chicken & Biriyani ~600 kcal)"]
   },
 
   testimonials: [

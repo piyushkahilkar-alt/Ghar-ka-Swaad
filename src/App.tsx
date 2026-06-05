@@ -11,7 +11,6 @@ import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import HomePage from './components/pages/HomePage';
 import FoodLoader from './components/ui/FoodLoader';
-import ChatWidget from './components/ui/ChatWidget';
 import { Analytics } from '@vercel/analytics/react';
 
 // Lazy loading pages for better performance
@@ -193,7 +192,6 @@ export default function App() {
       
       {/* Floating Buttons */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-4 items-end">
-        <ChatWidget />
         {/* Call Button */}
         <a
               href={`tel:${BRAND_DATA.brand.phone.replace(/[^0-9+]/g, '')}`}
