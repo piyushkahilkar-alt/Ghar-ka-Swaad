@@ -53,18 +53,21 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
         try {
           const addressJoined = [address, landmark, city].filter(Boolean).join(', ');
           const sheetData = {
-            "name": user.displayName || "",
-            "mobile no": user.phoneNumber || user.email || "",
-            "location": addressJoined || "",
+            "name": user.displayName || "Not Provided",
+            "contact": user.phoneNumber || user.email || "Not Provided",
+            "mobile no": user.phoneNumber || user.email || "Not Provided",
+            "location": addressJoined || "Not Provided",
             "plan": "N/A (Just Registered)",
+            "amount": 0,
             "amount paid": 0,
-            "query": userQuery || ""
+            "query": userQuery || "Not Provided",
+            "date": new Date().toLocaleString()
           };
           console.log("[DEBUG Frontend Google] Form submission: Sending webhook data", JSON.stringify(sheetData));
-          fetch("https://script.google.com/macros/s/AKfycby7zusD7GvrXHdtZGXe4P8MlFBgAS8EsP-4ugJvGDl9B2JNVzW2nG7pc-yRl0XPpRJl6g/exec", {
+          fetch("https://script.google.com/macros/s/AKfycbza3rOBAMdqHo8nz8OCwXBR5bL2Ia7ZPEDeoyFVmrX04X_eGRtzIk9b3x4NH8bIrqQi/exec", {
             method: "POST",
             mode: "no-cors",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "text/plain" },
             body: JSON.stringify(sheetData)
           }).then(() => console.log("[DEBUG Frontend Google] Webhook sent successfully from frontend"))
             .catch(e => console.error("[DEBUG Frontend Google] Webhook failed:", e));
@@ -161,18 +164,21 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (page: any) =
       try {
         const addressJoined = [address, landmark, city].filter(Boolean).join(', ');
         const sheetData = {
-          "name": name || "",
-          "mobile no": phone || email || "",
-          "location": addressJoined || "",
+          "name": name || "Not Provided",
+          "contact": phone || email || "Not Provided",
+          "mobile no": phone || email || "Not Provided",
+          "location": addressJoined || "Not Provided",
           "plan": "N/A (Just Registered)",
+          "amount": 0,
           "amount paid": 0,
-          "query": userQuery || ""
+          "query": userQuery || "Not Provided",
+          "date": new Date().toLocaleString()
         };
         console.log("[DEBUG Frontend] Form submission: Sending webhook data", JSON.stringify(sheetData));
-        fetch("https://script.google.com/macros/s/AKfycby7zusD7GvrXHdtZGXe4P8MlFBgAS8EsP-4ugJvGDl9B2JNVzW2nG7pc-yRl0XPpRJl6g/exec", {
+        fetch("https://script.google.com/macros/s/AKfycbza3rOBAMdqHo8nz8OCwXBR5bL2Ia7ZPEDeoyFVmrX04X_eGRtzIk9b3x4NH8bIrqQi/exec", {
           method: "POST",
           mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "text/plain" },
           body: JSON.stringify(sheetData)
         }).then(() => console.log("[DEBUG Frontend] Webhook sent successfully from frontend"))
           .catch(e => console.error("[DEBUG Frontend] Webhook failed from frontend:", e));

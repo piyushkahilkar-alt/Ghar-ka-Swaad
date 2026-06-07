@@ -314,16 +314,20 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
         // Send to Google Sheets Webhook
         const addressJoined = [userObj.address, userObj.landmark, userObj.city].filter(Boolean).join(', ');
         const sheetData = {
-            "name": userObj.name || userObj.displayName || "",
-            "mobile no": userObj.phone || userObj.phoneNumber || userObj.email || "",
-            "location": addressJoined || "",
-            "plan": planWithCustomAmount.name,
-            "amount paid": customAmount,
-            "query": userObj.userQuery || ""
+            "name": userObj.name || userObj.displayName || "Not Provided",
+            "contact": userObj.phone || userObj.phoneNumber || userObj.email || "Not Provided",
+            "mobile no": userObj.phone || userObj.phoneNumber || userObj.email || "Not Provided",
+            "location": addressJoined || "Not Provided",
+            "plan": planWithCustomAmount.name || "Not Provided",
+            "amount": customAmount || 0,
+            "amount paid": customAmount || 0,
+            "query": userObj.userQuery || "Not Provided",
+            "date": new Date().toLocaleString()
         };
-        fetch("https://script.google.com/macros/s/AKfycby7zusD7GvrXHdtZGXe4P8MlFBgAS8EsP-4ugJvGDl9B2JNVzW2nG7pc-yRl0XPpRJl6g/exec", {
+        fetch("https://script.google.com/macros/s/AKfycbza3rOBAMdqHo8nz8OCwXBR5bL2Ia7ZPEDeoyFVmrX04X_eGRtzIk9b3x4NH8bIrqQi/exec", {
            method: "POST",
-           headers: { "Content-Type": "application/json" },
+           mode: "no-cors",
+           headers: { "Content-Type": "text/plain" },
            body: JSON.stringify(sheetData)
         }).catch(err => console.error("Webhook error: ", err));
 
@@ -343,17 +347,14 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
         let whatsappMsg = '';
         const adminUrl = typeof window !== 'undefined' ? window.location.origin + '/dashboard' : 'https://gharkaswaadngp.vercel.app/dashboard';
         
+        let commonText = `Name: ${sheetData.name}\nContact: ${sheetData["mobile no"]}\nAddress: ${sheetData.location}\nPlan: ${sheetData.plan}\nAmount Paid: ₹${customAmount}\n\nKDK Student: ${isStudent ? 'Yes' : 'No'}${isStudent ? `\nRoll No: ${rollNumber}` : ''}\n\nUploads and Images:\n`;
+        if (paymentScreenshot) commonText += `Payment Receipt: View on Dashboard -> ${adminUrl}\n`;
+        if (isStudent && studentIdImage) commonText += `Student ID Card: View on Dashboard -> ${adminUrl}\n`;
+
         if (selectedPlan.id === 0) {
-            whatsappMsg = `New Ghar Ka Swaad Trial Request\n\nName: ${sheetData.name}\nPhone: ${sheetData["mobile no"]}\nAddress: ${sheetData.location}\n\nPlan: ${sheetData.plan}\nAmount Paid: ₹${customAmount}\n\nKDK Student: ${isStudent ? 'Yes' : 'No'}${isStudent ? `\nRoll No: ${rollNumber}` : ''}\n\nUploads:\n`;
-            
-            if (paymentScreenshot) whatsappMsg += `Payment Receipt: ${adminUrl}\n`;
-            if (isStudent && studentIdImage) {
-                whatsappMsg += `Student ID Card: ${adminUrl}\n`;
-            }
-            
-            whatsappMsg += `\nPlease verify and approve.`;
+            whatsappMsg = `New Ghar Ka Swaad Trial Request\n\n${commonText}\nPlease verify and approve.`;
         } else {
-            whatsappMsg = `New Ghar Ka Swaad Order\n\nName: ${sheetData.name}\nPhone: ${sheetData["mobile no"]}\nAddress: ${sheetData.location}\n\nPlan: ${sheetData.plan}\nAmount Paid: ₹${sheetData["amount paid"]}\nTransaction ID: ${transactionId || paymentId}\n\nKDK Student: ${isStudent ? 'Yes' : 'No'}${isStudent ? `\nRoll Number: ${rollNumber}` : ''}\n\nPayment Completed Successfully.\nPlease verify.`;
+            whatsappMsg = `New Ghar Ka Swaad Order\n\n${commonText}Transaction ID: ${transactionId || paymentId}\n\nPayment Completed Successfully.\nPlease verify.`;
         }
 
         setTimeout(() => {
@@ -403,7 +404,7 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
               )}
               
               <div className="mb-6">
-                <div className="bg-red-50 text-red-600 text-[10px] font-bold uppercase py-1 px-2 rounded flex items-center justify-center gap-1 mb-3 border border-red-100">
+                <div className="bg-blue-50 text-blue-600 text-[10px] font-bold uppercase py-1 px-2 rounded flex items-center justify-center gap-1 mb-3 border border-blue-100">
                   <span role="img" aria-label="student">🎓</span> KDK Student Offer Available
                 </div>
                 <div className="flex items-center gap-2 mb-3">
@@ -518,20 +519,20 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
                     {isStudent === true && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="w-full text-left space-y-4">
                         {selectedPlan.id !== 0 && (
-                            <div className="bg-red-50 p-4 rounded-xl border border-red-100 flex items-start gap-3 mb-4">
+                            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-3 mb-4">
                                <span className="text-2xl mt-1">🎓</span>
                                <div>
-                                  <p className="font-bold text-red-700">₹100 Student Discount Applied!</p>
-                                  <p className="text-xs text-red-600">Please provide your details below.</p>
+                                  <p className="font-bold text-blue-700">₹100 Student Discount Applied!</p>
+                                  <p className="text-xs text-blue-600">Please provide your details below.</p>
                                </div>
                             </div>
                         )}
                         {selectedPlan.id === 0 && (
-                            <div className="bg-red-50 p-4 rounded-xl border border-red-100 flex items-start gap-3 mb-4">
+                            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-3 mb-4">
                                <span className="text-2xl mt-1">🎓</span>
                                <div>
-                                  <p className="font-bold text-red-700">Student Details Required</p>
-                                  <p className="text-xs text-red-600">Please provide your student details to verify your identity.</p>
+                                  <p className="font-bold text-blue-700">Student Details Required</p>
+                                  <p className="text-xs text-blue-600">Please provide your student details to verify your identity.</p>
                                </div>
                             </div>
                         )}
@@ -590,7 +591,7 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
                         }
                         
                         const today = new Date();
-                        const isOfferDay = today.getMonth() === 5 && today.getDate() === 8; // June 8th
+                        const isOfferDay = today.getMonth() === 5 && today.getDate() === 9; // June 9th
                         let finalAmt = baseAmount;
                         if (selectedPlan.id === 0) {
                             if (isStudent && isOfferDay) {

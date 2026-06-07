@@ -55,7 +55,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       {/* June 8 Promotional Banner */}
       <div className="bg-gradient-to-r from-red-600 to-orange-500 text-white text-center py-3 px-4 font-bold shadow-lg absolute top-0 w-full z-[100] flex justify-center items-center gap-2">
          <span className="text-xl">🎉</span>
-         <span>SPECIAL ANNOUNCEMENT: On 8th June, get 50% OFF on Trial Meals! Valid for the first 100 registered customers only.</span>
+         <span>SPECIAL ANNOUNCEMENT: On 9th June, get 50% OFF on Trial Meals! Valid for the first 10 new customers only.</span>
          <span className="text-xl">🎉</span>
       </div>
 
@@ -84,7 +84,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               transition={{ duration: 0.5 }}
               className="flex flex-col items-center"
             >
-               <span className="inline-block py-2 px-6 bg-gradient-to-r from-brand-accent to-red-600 text-white rounded-full text-sm sm:text-base font-bold tracking-wider uppercase mb-2 shadow-lg backdrop-blur-md border border-white/20">
+               <span className="inline-block py-2 px-6 bg-gradient-to-r from-blue-500 to-blue-700 text-white rounded-full text-sm sm:text-base font-bold tracking-wider uppercase mb-2 shadow-lg backdrop-blur-md border border-white/20">
                  🎓 KDK College Student Special & 🔥 ₹49 Trial
                </span>
                <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
@@ -153,10 +153,10 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             viewport={{ once: true }}
             className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100 relative group"
           >
-            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-brand-accent to-red-500"></div>
+            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-blue-700"></div>
             <div className="p-8 md:p-10 flex flex-col md:flex-row items-center gap-8">
               <div className="flex-1">
-                <span className="inline-block px-3 py-1 bg-red-100 text-red-600 rounded-lg text-xs font-bold uppercase tracking-wider mb-4 border border-red-200">
+                <span className="inline-block px-3 py-1 bg-blue-100 text-blue-600 rounded-lg text-xs font-bold uppercase tracking-wider mb-4 border border-blue-200">
                   Limited Time
                 </span>
                 <h3 className="text-3xl font-serif font-bold text-gray-900 mb-4">KDK Exclusive Student Offer</h3>

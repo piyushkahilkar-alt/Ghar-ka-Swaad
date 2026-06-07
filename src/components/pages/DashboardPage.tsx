@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { LogOut, History, Package, User, Bell, MapPin, PauseCircle, PlayCircle, X, Gift, Copy, CheckCircle2 } from 'lucide-react';
+import { LogOut, History, Package, User, Bell, MapPin, PauseCircle, PlayCircle, X, Gift, Copy, CheckCircle2, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { BRAND_DATA } from '../../constants';
 import { db, auth } from '../../firebase';
@@ -12,6 +12,7 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
   const [orders, setOrders] = useState<any>(null);
   const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
   const [allPayments, setAllPayments] = useState<any[]>([]);
+  const [syncingSheets, setSyncingSheets] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -190,6 +191,103 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('user');
     onNavigate('home');
+  };
+
+  const handleSyncToSheets = async () => {
+    setSyncingSheets(true);
+    try {
+        let syncedCount = 0;
+        const usersRef = collection(db, 'users');
+        const usersSnap = await getDocs(query(usersRef));
+        
+        let userCache: Record<string, any> = {};
+        usersSnap.docs.forEach((docSnap) => {
+            userCache[docSnap.id] = docSnap.data();
+        });
+
+        // Loop over allPayments to send them to Webhook individually
+        for (let payment of allPayments) {
+            const userObj = userCache[payment.userId] || {};
+            const addressJoined = [userObj.address, userObj.landmark, userObj.city].filter(Boolean).join(', ');
+            
+            const sheetData = {
+                "name": userObj.name || userObj.displayName || payment.userId,
+                "contact": userObj.phone || userObj.phoneNumber || userObj.email || "Not Provided",
+                "mobile no": userObj.phone || userObj.phoneNumber || userObj.email || "Not Provided",
+                "location": addressJoined || "Not Provided",
+                "plan": payment.plan || "N/A",
+                "amount": payment.amount || 0,
+                "amount paid": payment.amount || 0,
+                "query": "Synced via Admin Dashboard",
+                "date": new Date(payment.createdAt).toLocaleString()
+            };
+
+            await fetch("https://script.google.com/macros/s/AKfycbza3rOBAMdqHo8nz8OCwXBR5bL2Ia7ZPEDeoyFVmrX04X_eGRtzIk9b3x4NH8bIrqQi/exec", {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "text/plain" },
+                body: JSON.stringify(sheetData)
+            });
+            syncedCount++;
+        }
+        
+        if (syncedCount > 0) {
+           toast.success(`Successfully requested sync for ${syncedCount} orders to Google Sheets.`);
+        } else {
+           toast.error("No newly mapped payments found.");
+        }
+    } catch(err: any) {
+        toast.error("Sync failed: " + err.message);
+    } finally {
+        setSyncingSheets(false);
+    }
+  };
+
+  const handleExportCSV = async () => {
+    try {
+        const usersRef = collection(db, 'users');
+        const usersSnap = await getDocs(query(usersRef));
+        
+        let userCache: Record<string, any> = {};
+        usersSnap.docs.forEach((docSnap) => {
+            userCache[docSnap.id] = docSnap.data();
+        });
+
+        // Generate CSV headers
+        const headers = ["Date", "Name", "Contact", "Location", "Plan", "Amount Paid", "Transaction ID", "KDK Student"];
+        const rows = allPayments.map(payment => {
+            const userObj = userCache[payment.userId] || {};
+            const addressJoined = [userObj.address, userObj.landmark, userObj.city].filter(Boolean).join(', ') || "Not Provided";
+            const isStudent = payment.studentInfo ? "Yes" : "No";
+            
+            return [
+                `"${new Date(payment.createdAt).toLocaleString()}"`,
+                `"${userObj.name || userObj.displayName || payment.userId}"`,
+                `"${userObj.phone || userObj.phoneNumber || userObj.email || 'Not Provided'}"`,
+                `"${addressJoined}"`,
+                `"${payment.plan || 'N/A'}"`,
+                `"${payment.amount || 0}"`,
+                `"${payment.paymentId || payment.transactionId || 'N/A'}"`,
+                `"${isStudent}"`
+            ].join(',');
+        });
+
+        const csvContent = [headers.join(','), ...rows].join('\n');
+        
+        // Create blob and trigger download
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `gharkaswaad_payments_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast.success("CSV exported successfully");
+    } catch(err: any) {
+        toast.error("Export failed: " + err.message);
+    }
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -813,9 +911,29 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
             animate={{ opacity: 1, y: 0 }}
             className="md:col-span-3 mt-8 bg-white p-6 md:p-8 rounded-3xl shadow-xl border-2 border-red-500/20"
           >
-            <div className="flex items-center gap-3 mb-6">
-              <span className="text-2xl">👑</span>
-              <h2 className="text-2xl font-serif font-bold text-red-600">Admin Dashboard - All Orders</h2>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">👑</span>
+                <h2 className="text-2xl font-serif font-bold text-red-600">Admin Dashboard - All Orders</h2>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <button 
+                  onClick={handleExportCSV}
+                  disabled={syncingSheets}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-blue-700 transition flex items-center gap-2 disabled:opacity-50"
+                  title="Export to CSV"
+                >
+                  <Download size={18} />
+                  Export CSV
+                </button>
+                <button 
+                  onClick={handleSyncToSheets}
+                  disabled={syncingSheets}
+                  className="bg-green-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-green-700 transition flex items-center gap-2 disabled:opacity-50"
+                >
+                  {syncingSheets ? "Syncing..." : "Sync All Data to Google Sheets"}
+                </button>
+              </div>
             </div>
             
             <div className="overflow-x-auto">
