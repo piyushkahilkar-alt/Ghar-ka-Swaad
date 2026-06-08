@@ -25,7 +25,7 @@ export const BRAND_DATA = {
       meals_per_day: 1,
       menu: ["Standard Meal", "Taste our quality", "Dal, Rice, Roti, Sabzi", "Salad & Aachar"],
       target: "First Timers",
-      description: "Try our quality before subscribing. On 9th June, we are going to provide 50% off on trial, so stay updated!"
+      description: "Try our quality before subscribing. On 9th June, we are going to provide 25% off on trial, so stay updated!"
     },
     {
       id: 1,

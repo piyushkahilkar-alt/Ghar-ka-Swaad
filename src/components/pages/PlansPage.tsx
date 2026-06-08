@@ -595,7 +595,7 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
                         let finalAmt = baseAmount;
                         if (selectedPlan.id === 0) {
                             if (isStudent && isOfferDay) {
-                                finalAmt = Math.round(baseAmount * 0.5); // 50% off
+                                finalAmt = Math.round(baseAmount * 0.75); // 25% off
                             } else {
                                 finalAmt = baseAmount; // 79 otherwise
                             }

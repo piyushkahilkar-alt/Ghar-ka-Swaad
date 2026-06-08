@@ -55,7 +55,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       {/* June 8 Promotional Banner */}
       <div className="bg-gradient-to-r from-red-600 to-orange-500 text-white text-center py-3 px-4 font-bold shadow-lg absolute top-0 w-full z-[100] flex justify-center items-center gap-2">
          <span className="text-xl">🎉</span>
-         <span>SPECIAL ANNOUNCEMENT: On 9th June, get 50% OFF on Trial Meals! Valid for the first 10 new customers only.</span>
+         <span>SPECIAL ANNOUNCEMENT: On 9th June, get 25% OFF on Trial Meals! Valid for the first 10 new customers only.</span>
          <span className="text-xl">🎉</span>
       </div>
 
@@ -85,14 +85,14 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               className="flex flex-col items-center"
             >
                <span className="inline-block py-2 px-6 bg-gradient-to-r from-blue-500 to-blue-700 text-white rounded-full text-sm sm:text-base font-bold tracking-wider uppercase mb-2 shadow-lg backdrop-blur-md border border-white/20">
-                 🎓 KDK College Student Special & 🔥 ₹49 Trial
+                 🎓 KDK College Student Special & 🔥 ₹59 Trial
                </span>
                <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
                  <p className="text-white text-lg sm:text-xl font-bold drop-shadow-md bg-black/30 px-3 py-1 rounded-lg backdrop-blur-sm">
                    Get ₹100 OFF on Monthly Tiffin Plans
                  </p>
                  <p className="text-white text-lg sm:text-xl font-bold drop-shadow-md bg-brand-primary/80 px-3 py-1 rounded-lg backdrop-blur-sm">
-                   🔥 Trial Meal for ₹49
+                   🔥 Trial Meal for ₹59
                  </p>
                </div>
                <p className="text-white/80 text-xs sm:text-sm font-medium mb-6 backdrop-blur-sm drop-shadow-md">
@@ -201,7 +201,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                 <span className="inline-block px-3 py-1 bg-orange-100 text-orange-600 rounded-lg text-xs font-bold uppercase tracking-wider mb-4 border border-orange-200">
                   🔥 Student & Community Trial Offer
                 </span>
-                <h3 className="text-3xl font-serif font-bold text-gray-900 mb-2">Try Ghar Ka Swaad for Just ₹49</h3>
+                <h3 className="text-3xl font-serif font-bold text-gray-900 mb-2">Try Ghar Ka Swaad for Just ₹59</h3>
                 <p className="text-gray-500 font-medium mb-4">Complete the required steps and unlock the discounted trial meal.</p>
                 <ul className="space-y-3 mb-6">
                   <li className="flex items-center text-gray-700 font-medium font-sans">
@@ -219,7 +219,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                  <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100 text-center mb-6 w-full shadow-sm relative overflow-hidden">
                    <div className="absolute -top-3 -right-3 text-red-500/10 rotate-12"><Star size={100} fill="currentColor" /></div>
                    <p className="text-sm text-gray-500 font-bold uppercase mb-1 line-through">Original: ₹79</p>
-                   <p className="text-5xl font-black text-orange-600 relative z-10">₹49<span className="text-2xl"></span></p>
+                   <p className="text-5xl font-black text-orange-600 relative z-10">₹59<span className="text-2xl"></span></p>
                  </div>
                  <button 
                   onClick={(e) => { e.preventDefault(); onNavigate('plans'); }}
