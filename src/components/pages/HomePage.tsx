@@ -1,7 +1,7 @@
 import { PageType } from '../../App';
 import { BRAND_DATA } from '../../constants';
 import { motion } from 'motion/react';
-import { CheckCircle2, Star, ArrowRight, Clock, Utensils, Heart } from 'lucide-react';
+import { CheckCircle2, Star, ArrowRight, Clock, Utensils, Heart, MapPin } from 'lucide-react';
 import { logoBase64 } from '../../assets/logoBase64';
 import { useSEO } from '../../utils/useSEO';
 
@@ -52,13 +52,6 @@ export default function HomePage({ onNavigate }: HomePageProps) {
 
   return (
     <div className="flex flex-col">
-      {/* June 8 Promotional Banner */}
-      <div className="bg-gradient-to-r from-red-600 to-orange-500 text-white text-center py-3 px-4 font-bold shadow-lg absolute top-0 w-full z-[100] flex justify-center items-center gap-2">
-         <span className="text-xl">🎉</span>
-         <span>SPECIAL ANNOUNCEMENT: On 9th June, get 25% OFF on Trial Meals! Valid for the first 10 new customers only.</span>
-         <span className="text-xl">🎉</span>
-      </div>
-
       {/* Hero Section */}
       <section className="relative min-h-[90vh] flex items-center pt-24 overflow-hidden">
         <div className="absolute inset-0 z-0 overflow-hidden">
@@ -151,7 +144,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100 relative group"
+            className="bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 relative group"
           >
             <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-blue-700"></div>
             <div className="p-8 md:p-10 flex flex-col md:flex-row items-center gap-8">
@@ -193,7 +186,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl overflow-hidden border border-orange-100 relative group"
+            className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-orange-100 relative group"
           >
             <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-orange-400 to-yellow-500"></div>
             <div className="p-8 md:p-10 flex flex-col md:flex-row items-center gap-8">
@@ -273,31 +266,41 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       </section>
 
       {/* Service Areas */}
-      <section className="py-20 bg-brand-secondary border-y border-brand-primary/10">
+      <section className="py-24 bg-gradient-to-b from-gray-50 to-white border-y border-gray-100">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.6 }}
-            className="text-center max-w-3xl mx-auto mb-12"
+            className="text-center max-w-3xl mx-auto mb-16"
           >
-            <h2 className="text-3xl md:text-4xl font-serif font-bold mb-4 uppercase tracking-tight text-gray-900">Tiffin Delivery Areas in Nagpur</h2>
-            <div className="w-16 h-1 bg-brand-accent mx-auto mb-6"></div>
-            <p className="text-gray-600 text-lg">We currently deliver our fresh tiffins to these major locations in Nagpur and nearby areas.</p>
+            <span className="inline-block px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold uppercase tracking-wider mb-4 border border-blue-100">
+              Coverage
+            </span>
+            <h2 className="text-4xl md:text-5xl font-serif font-extrabold mb-6 tracking-tight text-gray-900">
+              Delivery Areas in <span className="text-brand-primary">Nagpur</span>
+            </h2>
+            <div className="w-20 h-1.5 bg-gradient-to-r from-brand-primary to-orange-400 mx-auto mb-6 rounded-full"></div>
+            <p className="text-gray-600 text-lg leading-relaxed">
+              We bring fresh, hot, and hygienic ghar jaisa khana right to your doorstep across major locations.
+            </p>
           </motion.div>
           
-          <div className="flex flex-wrap justify-center gap-4 max-w-4xl mx-auto">
-            {BRAND_DATA.locations.slice(0, 10).map((loc, idx) => (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 max-w-6xl mx-auto">
+            {BRAND_DATA.locations.map((loc, idx) => (
               <motion.div
                 key={loc}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                whileHover={{ scale: 1.05 }}
                 viewport={{ once: true }}
-                transition={{ delay: idx * 0.05 }}
-                className="bg-white border-2 border-brand-primary/20 text-brand-primary px-6 py-3 rounded-full font-bold text-sm hover:bg-brand-primary hover:text-white transition-colors cursor-default shadow-sm"
+                transition={{ duration: 0.4, delay: idx * 0.05 }}
+                className="bg-white group overflow-hidden relative border border-gray-200 hover:border-brand-primary text-gray-800 px-6 py-5 rounded-2xl shadow-sm hover:shadow-[0_0_20px_rgba(239,68,68,0.2)] hover:shadow-brand-primary/30 cursor-pointer transition-all duration-300 flex items-center justify-between"
               >
-                {loc}
+                <div className="absolute top-0 left-0 w-2 h-full bg-brand-primary/10 group-hover:bg-brand-primary transition-colors"></div>
+                <span className="font-bold text-gray-800 group-hover:text-brand-primary transition-colors z-10">{loc}</span>
+                <MapPin size={20} className="text-gray-400 group-hover:text-brand-primary transition-colors z-10 opacity-50 group-hover:opacity-100" />
               </motion.div>
             ))}
           </div>

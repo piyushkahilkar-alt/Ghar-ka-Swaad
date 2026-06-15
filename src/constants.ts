@@ -13,7 +13,8 @@ export const BRAND_DATA = {
   locations: [
     "Nandanvan", "Ashok Nagar", "Chapru Nagar", "Jagnade Square", 
     "Ganesh Nagar", "Guru Dev Nagar", "Shree Krishna Nagar", 
-    "Vyankatesh Nagar", "Shashtri Nagar", "Darshan Colony"
+    "Vyankatesh Nagar", "Shashtri Nagar", "Darshan Colony",
+    "Wathoda", "Nirmal Nagri", "Shitla Mata Square", "Tiranga Square"
   ],
 
   plans: [
@@ -25,7 +26,7 @@ export const BRAND_DATA = {
       meals_per_day: 1,
       menu: ["Standard Meal", "Taste our quality", "Dal, Rice, Roti, Sabzi", "Salad & Aachar"],
       target: "First Timers",
-      description: "Try our quality before subscribing. On 9th June, we are going to provide 25% off on trial, so stay updated!"
+      description: "Try our quality before subscribing. Special student trial price available!"
     },
     {
       id: 1,

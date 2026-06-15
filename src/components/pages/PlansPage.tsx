@@ -590,12 +590,10 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
                             return;
                         }
                         
-                        const today = new Date();
-                        const isOfferDay = today.getMonth() === 5 && today.getDate() === 9; // June 9th
                         let finalAmt = baseAmount;
                         if (selectedPlan.id === 0) {
-                            if (isStudent && isOfferDay) {
-                                finalAmt = Math.round(baseAmount * 0.75); // 25% off
+                            if (isStudent) {
+                                finalAmt = 59; // Student trial price
                             } else {
                                 finalAmt = baseAmount; // 79 otherwise
                             }
