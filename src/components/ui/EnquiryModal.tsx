@@ -32,7 +32,7 @@ export default function EnquiryModal({ isOpen, onClose }: EnquiryModalProps) {
     setIsSubmitting(true);
     
     try {
-      await fetch('https://script.google.com/macros/s/AKfycbz_Nm0AmBWOGoskh3Jd2_Z3o3f5B9hxeTHHm64EOupTLGtYKo0fCB5nhYborDUxwGtp6Q/exec', {
+      await fetch('https://script.google.com/macros/s/AKfycbwWMunTlrjiS2VJUuKj4TxPj7U9xH34NzkDZjRp6GceZH43Oc70yFBqVImaCLNp5Wuo7Q/exec', {
         method: 'POST',
         mode: 'no-cors',
         headers: {

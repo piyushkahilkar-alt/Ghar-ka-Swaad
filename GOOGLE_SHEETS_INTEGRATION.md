@@ -110,7 +110,7 @@ function doOptions(e) {
 
 ## 4. Update the Frontend
 The frontend has already been updated to use the target URL provided:
-`https://script.google.com/macros/s/AKfycbz_Nm0AmBWOGoskh3Jd2_Z3o3f5B9hxeTHHm64EOupTLGtYKo0fCB5nhYborDUxwGtp6Q/exec`
+`https://script.google.com/macros/s/AKfycbwWMunTlrjiS2VJUuKj4TxPj7U9xH34NzkDZjRp6GceZH43Oc70yFBqVImaCLNp5Wuo7Q/exec`
 
 *If you ever need to change it, it's located in `/src/components/ui/EnquiryModal.tsx` on line `34`.*
 
