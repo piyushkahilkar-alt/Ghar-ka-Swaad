@@ -77,20 +77,9 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               transition={{ duration: 0.5 }}
               className="flex flex-col items-center"
             >
-               <span className="inline-block py-2 px-6 bg-gradient-to-r from-blue-500 to-blue-700 text-white rounded-full text-sm sm:text-base font-bold tracking-wider uppercase mb-2 shadow-lg backdrop-blur-md border border-white/20">
-                 🎓 KDK College Student Special & 🔥 ₹59 Trial
+               <span className="inline-block py-2 px-6 bg-gradient-to-r from-brand-primary to-orange-500 text-white rounded-full text-sm sm:text-base font-bold tracking-wider uppercase mb-6 shadow-lg backdrop-blur-md border border-white/20">
+                 🔥 Taste our quality trial for ₹99
                </span>
-               <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
-                 <p className="text-white text-lg sm:text-xl font-bold drop-shadow-md bg-black/30 px-3 py-1 rounded-lg backdrop-blur-sm">
-                   Get ₹100 OFF on Monthly Tiffin Plans
-                 </p>
-                 <p className="text-white text-lg sm:text-xl font-bold drop-shadow-md bg-brand-primary/80 px-3 py-1 rounded-lg backdrop-blur-sm">
-                   🔥 Trial Meal for ₹59
-                 </p>
-               </div>
-               <p className="text-white/80 text-xs sm:text-sm font-medium mb-6 backdrop-blur-sm drop-shadow-md">
-                 Valid only for verified KDK College students with a valid Student ID Card. ⭐ Upload Proof & Unlock Discount.
-               </p>
             </motion.div>
             <motion.h1 
               initial={{ opacity: 0, y: 30 }}
@@ -137,51 +126,8 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         </div>
       </section>
 
-      {/* KDK Student Offer Section */}
       <section className="py-12 bg-gray-50 border-b border-gray-200">
         <div className="container mx-auto px-4 max-w-4xl space-y-8">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 relative group"
-          >
-            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-blue-700"></div>
-            <div className="p-8 md:p-10 flex flex-col md:flex-row items-center gap-8">
-              <div className="flex-1">
-                <span className="inline-block px-3 py-1 bg-blue-100 text-blue-600 rounded-lg text-xs font-bold uppercase tracking-wider mb-4 border border-blue-200">
-                  Limited Time
-                </span>
-                <h3 className="text-3xl font-serif font-bold text-gray-900 mb-4">KDK Exclusive Student Offer</h3>
-                <ul className="space-y-3 mb-6">
-                  {[
-                    "₹100 Instant Discount",
-                    "Homemade Food",
-                    "Daily Fresh Meals",
-                    "Student Friendly Pricing",
-                    "Verification via College ID Card"
-                  ].map((item, i) => (
-                    <li key={i} className="flex items-center text-gray-700 font-medium font-sans">
-                      <CheckCircle2 size={18} className="text-green-500 mr-3 flex-shrink-0" /> {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="w-full md:w-auto flex flex-col items-center">
-                 <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 text-center mb-6 w-full shadow-sm">
-                   <p className="text-sm text-gray-500 font-bold uppercase mb-1">Save Up To</p>
-                   <p className="text-5xl font-black text-brand-primary">₹100<span className="text-2xl">/mo</span></p>
-                 </div>
-                 <button 
-                  onClick={(e) => { e.preventDefault(); onNavigate('plans'); }}
-                  className="w-full py-4 px-8 bg-brand-primary text-white rounded-xl font-bold hover:bg-brand-dark transition-all shadow-md hover:shadow-xl active:scale-95"
-                 >
-                   Claim Student Offer
-                 </button>
-              </div>
-            </div>
-          </motion.div>
-
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -192,9 +138,9 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             <div className="p-8 md:p-10 flex flex-col md:flex-row items-center gap-8">
               <div className="flex-1">
                 <span className="inline-block px-3 py-1 bg-orange-100 text-orange-600 rounded-lg text-xs font-bold uppercase tracking-wider mb-4 border border-orange-200">
-                  🔥 Student & Community Trial Offer
+                  🔥 Community Trial Offer
                 </span>
-                <h3 className="text-3xl font-serif font-bold text-gray-900 mb-2">Try Ghar Ka Swaad for Just ₹59</h3>
+                <h3 className="text-3xl font-serif font-bold text-gray-900 mb-2">Try Ghar Ka Swaad for Just ₹99</h3>
                 <p className="text-gray-500 font-medium mb-4">Complete the required steps and unlock the discounted trial meal.</p>
                 <ul className="space-y-3 mb-6">
                   <li className="flex items-center text-gray-700 font-medium font-sans">
@@ -211,8 +157,8 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               <div className="w-full md:w-auto flex flex-col items-center">
                  <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100 text-center mb-6 w-full shadow-sm relative overflow-hidden">
                    <div className="absolute -top-3 -right-3 text-red-500/10 rotate-12"><Star size={100} fill="currentColor" /></div>
-                   <p className="text-sm text-gray-500 font-bold uppercase mb-1 line-through">Original: ₹79</p>
-                   <p className="text-5xl font-black text-orange-600 relative z-10">₹59<span className="text-2xl"></span></p>
+                   <p className="text-sm text-gray-500 font-bold uppercase mb-1">One Time Trial</p>
+                   <p className="text-5xl font-black text-orange-600 relative z-10">₹99<span className="text-2xl"></span></p>
                  </div>
                  <button 
                   onClick={(e) => { e.preventDefault(); onNavigate('plans'); }}
@@ -286,6 +232,64 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               We bring fresh, hot, and hygienic ghar jaisa khana right to your doorstep across major locations.
             </p>
           </motion.div>
+
+          {/* Abstract Map Visualization */}
+          <div className="relative w-full max-w-6xl mx-auto h-[350px] md:h-[450px] mb-16 rounded-3xl overflow-hidden border border-gray-200 bg-gray-50 shadow-inner flex items-center justify-center">
+            {/* Grid Pattern Background */}
+            <div className="absolute inset-0 opacity-[0.05]" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #000 1px, transparent 0)', backgroundSize: '24px 24px' }}></div>
+            
+            {/* Connecting Lines SVG */}
+            <svg className="absolute inset-0 w-full h-full opacity-50" preserveAspectRatio="none" viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg">
+              <path d="M 500 250 L 300 150 L 200 280" stroke="#EF4444" strokeWidth="2" fill="none" strokeDasharray="6 6" />
+              <path d="M 500 250 L 700 180 L 850 250" stroke="#EF4444" strokeWidth="2" fill="none" strokeDasharray="6 6" />
+              <path d="M 500 250 L 600 380 L 800 420" stroke="#EF4444" strokeWidth="2" fill="none" strokeDasharray="6 6" />
+              <path d="M 500 250 L 400 400 L 250 420" stroke="#EF4444" strokeWidth="2" fill="none" strokeDasharray="6 6" />
+              <path d="M 500 250 L 150 200" stroke="#EF4444" strokeWidth="2" fill="none" strokeDasharray="6 6" />
+              <path d="M 500 250 L 850 120" stroke="#EF4444" strokeWidth="2" fill="none" strokeDasharray="6 6" />
+            </svg>
+
+            {/* Hub Marker */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center">
+              <div className="relative">
+                <div className="absolute inset-0 bg-brand-primary rounded-full animate-ping opacity-60"></div>
+                <div className="bg-brand-primary text-white p-3 md:p-4 rounded-full relative z-10 shadow-lg border-2 border-white flex items-center justify-center">
+                  <Utensils size={24} className="md:w-8 md:h-8" />
+                </div>
+              </div>
+              <span className="mt-2 font-bold text-gray-900 bg-white/90 backdrop-blur px-4 py-1.5 rounded-full shadow-md text-xs md:text-sm border border-gray-100 whitespace-nowrap">Our Kitchen Hub</span>
+            </div>
+
+            {/* Delivery Nodes */}
+            {[
+              { name: "Manish Nagar", top: "75%", left: "30%" },
+              { name: "Wardhaman Nagar", top: "35%", left: "70%" },
+              { name: "Kharbi", top: "80%", left: "65%" },
+              { name: "Wathoda", top: "60%", left: "85%" },
+              { name: "Khamla", top: "70%", left: "15%" },
+              { name: "Medical Square", top: "60%", left: "45%" },
+              { name: "Ganeshpeth", top: "45%", left: "40%" },
+              { name: "Somalwada", top: "85%", left: "45%" },
+              { name: "Airport", top: "90%", left: "25%" },
+              { name: "Prajapati Nagar", top: "30%", left: "85%" },
+              { name: "Baidyanath Square", top: "45%", left: "60%" },
+              { name: "Raju Nagar", top: "20%", left: "25%" },
+              { name: "Vyankatesh Nagar", top: "30%", left: "55%" },
+              { name: "Ghat Road", top: "40%", left: "20%" },
+            ].map((node, i) => (
+              <motion.div 
+                key={i}
+                initial={{ opacity: 0, scale: 0 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.3 + (i * 0.1), type: "spring" }}
+                className="absolute z-10 flex flex-col items-center group cursor-pointer"
+                style={{ top: node.top, left: node.left }}
+              >
+                <div className="w-3 h-3 md:w-4 md:h-4 bg-white border-2 md:border-4 border-brand-accent rounded-full shadow-md group-hover:scale-150 transition-transform duration-300"></div>
+                <span className="mt-2 font-bold text-gray-700 bg-white/90 backdrop-blur px-2 py-1 md:px-3 md:py-1.5 rounded-full shadow-md text-[10px] md:text-xs border border-gray-100 opacity-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap translate-y-2 group-hover:translate-y-0">{node.name}</span>
+              </motion.div>
+            ))}
+          </div>
           
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 max-w-6xl mx-auto">
             {BRAND_DATA.locations.map((loc, idx) => (

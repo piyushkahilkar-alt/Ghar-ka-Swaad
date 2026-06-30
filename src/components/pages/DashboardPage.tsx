@@ -254,11 +254,11 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
         });
 
         // Generate CSV headers
-        const headers = ["Date", "Name", "Contact", "Location", "Plan", "Amount Paid", "Transaction ID", "KDK Student"];
+        const headers = ["Date", "Name", "Contact", "Location", "Plan", "Amount Paid", "Transaction ID", "Student", "Start Date", "Delivery Time"];
         const rows = allPayments.map(payment => {
             const userObj = userCache[payment.userId] || {};
             const addressJoined = [userObj.address, userObj.landmark, userObj.city].filter(Boolean).join(', ') || "Not Provided";
-            const isStudent = payment.studentInfo ? "Yes" : "No";
+            const isStudentStr = payment.studentInfo ? "Yes" : "No";
             
             return [
                 `"${new Date(payment.createdAt).toLocaleString()}"`,
@@ -268,7 +268,9 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
                 `"${payment.plan || 'N/A'}"`,
                 `"${payment.amount || 0}"`,
                 `"${payment.paymentId || payment.transactionId || 'N/A'}"`,
-                `"${isStudent}"`
+                `"${isStudentStr}"`,
+                `"${payment.startDate ? new Date(payment.startDate).toLocaleDateString() : 'N/A'}"`,
+                `"${payment.deliveryTime || 'N/A'}"`
             ].join(',');
         });
 
@@ -966,13 +968,17 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
                         {payment.studentInfo && (
                           <p className="text-xs text-green-600 font-bold">Original: ₹{payment.amount + payment.studentInfo.discountRecieved}</p>
                         )}
+                        {(payment.startDate || payment.deliveryTime) && (
+                          <div className="mt-2 text-xs text-gray-600">
+                            {payment.startDate && <p><span className="font-bold">Start:</span> {new Date(payment.startDate).toLocaleDateString()}</p>}
+                            {payment.deliveryTime && <p><span className="font-bold">Time:</span> {payment.deliveryTime}</p>}
+                          </div>
+                        )}
                       </td>
                       <td className="p-4">
                         {payment.studentInfo ? (
-                          <div className="bg-red-50 p-2 rounded border border-red-100 min-w-[200px] mb-2">
-                            <p className="text-xs font-bold text-red-700 mb-1">KDK Student Verified</p>
-                            <p className="text-xs text-gray-700">Roll: <strong>{payment.studentInfo.rollNumber}</strong></p>
-                            <p className="text-xs text-gray-700">Branch: <strong>{payment.studentInfo.courseBranch}</strong></p>
+                          <div className="bg-blue-50 p-2 rounded border border-blue-100 min-w-[200px] mb-2">
+                            <p className="text-xs font-bold text-blue-700 mb-1">Student Verified</p>
                             {payment.studentInfo.studentIdImage && (
                               <button onClick={() => {
                                  const w = window.open('about:blank', '_blank');
@@ -983,6 +989,8 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (page: any) 
                         ) : (
                           <span className="text-xs text-gray-400 block mb-2">Regular Customer</span>
                         )}
+                      </td>
+                      <td className="p-4">
                         {payment.trialOfferInfo && (
                           <div className="bg-orange-50 p-2 rounded border border-orange-100 min-w-[200px]">
                             <p className="text-xs font-bold text-orange-700 mb-1">🔥 Trial Offer Unlocked</p>

@@ -160,7 +160,7 @@ export default function AboutPage() {
                 </div>
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 border-l-4 border-l-blue-400">
                    <h4 className="font-bold text-gray-900 mb-1">Tech & Operations</h4>
-                   <p className="text-xs text-gray-500">CS Student at KDK College optimizing delivery logic.</p>
+                   <p className="text-xs text-gray-500">Tech expert optimizing delivery logic.</p>
                 </div>
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 border-l-4 border-l-green-400">
                    <h4 className="font-bold text-gray-900 mb-1">Customer Experience</h4>
@@ -270,7 +270,7 @@ export default function AboutPage() {
         <div className="container mx-auto px-4 relative z-10 text-center max-w-4xl">
             <Utensils className="mx-auto text-brand-primary mb-6" size={48} />
             <h2 className="text-3xl md:text-5xl font-serif font-bold text-white mb-8 leading-tight">
-                "Our mission is to ensure that students, working professionals, and families never have to compromise on healthy, delicious food. I want to spread it all over Nagpur."
+                "Our mission is to ensure that everyone, from working professionals to families, never has to compromise on healthy, delicious food. I want to spread it all over Nagpur."
             </h2>
             <div className="w-24 h-1 bg-brand-primary mx-auto rounded-full"></div>
         </div>

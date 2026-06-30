@@ -5,7 +5,7 @@ export const BRAND_DATA = {
     tagline: "Ghar Jaisa Khana, Roz Roz",
     phone: "+91 8275116821",
     email: "contact@gharkaswaad.com",
-    address: "Nandanvan, KDK Collage road, Nagpur",
+    address: "Nandanvan, Nagpur",
     whatsapp: "+918275116821",
     instagram: "https://www.instagram.com/gharkaswaadngp/"
   },
@@ -14,29 +14,42 @@ export const BRAND_DATA = {
     "Nandanvan", "Ashok Nagar", "Chapru Nagar", "Jagnade Square", 
     "Ganesh Nagar", "Guru Dev Nagar", "Shree Krishna Nagar", 
     "Vyankatesh Nagar", "Shashtri Nagar", "Darshan Colony",
-    "Wathoda", "Nirmal Nagri", "Shitla Mata Square", "Tiranga Square"
+    "Wathoda", "Nirmal Nagri", "Shitla Mata Square", "Tiranga Square",
+    "Manish Nagar", "Wardhaman Nagar", "Kharbi", "Prajapati Nagar",
+    "Baidyanath Square", "Khamla", "Medical Square", "Ganeshpeth",
+    "Ghat Road", "Somalwada", "Airport", "Raju Nagar"
   ],
 
   plans: [
     {
       id: 0,
       name: "Trial Offer",
-      price_per_meal: 79,
-      monthly_price: "79 (One Time)",
+      price_per_meal: 99,
+      monthly_price: "99 (One Time)",
       meals_per_day: 1,
       menu: ["Standard Meal", "Taste our quality", "Dal, Rice, Roti, Sabzi", "Salad & Aachar"],
       target: "First Timers",
-      description: "Try our quality before subscribing. Special student trial price available!"
+      description: "Try our quality before subscribing. Experience the Ghar Ka Swaad!"
     },
     {
       id: 1,
       name: "Daily Veg Plan",
-      price_per_meal: 100,
-      monthly_price: 2999,
+      price_per_meal: 116,
+      monthly_price: 3499,
       meals_per_day: 2,
       menu: ["Fresh Sabzi & Dal Tadka", "Rice & Rotis", "Salad & Aachar", "Morning Off, Night meal on Sundays"],
       target: "Regular Meals",
       description: "Our classic vegetarian tiffin delivered daily. Affordable and hygienic."
+    },
+    {
+      id: 2,
+      name: "Non-Veg Plan",
+      price_per_meal: 150,
+      monthly_price: 4499,
+      meals_per_day: 2,
+      menu: ["Chicken/Egg Curry (3 Days/Week)", "Veg Meals (4 Days/Week)", "Rice & Rotis", "Salad & Aachar"],
+      target: "Non-Veg Lovers",
+      description: "Delicious non-veg and veg mixed meals delivered daily."
     }
   ],
 
@@ -86,7 +99,7 @@ export const BRAND_DATA = {
     },
     {
       title: "Custom Plans",
-      description: "Choose from student, professional, or premium options.",
+      description: "Choose from our trial or monthly subscription plans.",
       icon: "Zap"
     }
   ]

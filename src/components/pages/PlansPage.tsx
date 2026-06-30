@@ -57,14 +57,14 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
   const [customAmount, setCustomAmount] = useState<number | ''>('');
   const [baseAmount, setBaseAmount] = useState<number>(0);
   
-  // Student KDK details
-  const [isStudent, setIsStudent] = useState<boolean | null>(null);
+  const [isStudent, setIsStudent] = useState(false);
   const [studentIdImage, setStudentIdImage] = useState<string | null>(null);
   const [rollNumber, setRollNumber] = useState('');
   const [courseBranch, setCourseBranch] = useState('');
-  
-  // Trial Offer Details removed
-  
+
+  const [startDate, setStartDate] = useState('');
+  const [deliveryTime, setDeliveryTime] = useState('');
+
   // Custom UPI QR Payment states
   const [countdown, setCountdown] = useState(300);
   const [paymentScreenshot, setPaymentScreenshot] = useState<string | null>(null);
@@ -93,10 +93,13 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
     setCustomAmount(planPrice);
     
     // Reset student states
-    setIsStudent(null);
+    setIsStudent(false);
     setStudentIdImage(null);
     setRollNumber('');
     setCourseBranch('');
+    
+    setStartDate('');
+    setDeliveryTime('');
     
     // Reset trial offer states removed
     
@@ -107,16 +110,6 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
     if (!customAmount || customAmount <= 0) {
         toast.error("Please enter a valid amount.");
         return;
-    }
-    if (isStudent) {
-        if (!studentIdImage) {
-            toast.error("Please upload your Student ID Card.");
-            return;
-        }
-        if (!rollNumber.trim() || !courseBranch.trim()) {
-            toast.error("Please fill in Roll Number and Course/Branch.");
-            return;
-        }
     }
     
 
@@ -208,43 +201,6 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
     reader.readAsDataURL(file);
   };
 
-  const handleStudentIdUpload = (e: any) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-       const img = new Image();
-       img.onload = () => {
-           const canvas = document.createElement('canvas');
-           const MAX_WIDTH = 800;
-           const MAX_HEIGHT = 800;
-           let width = img.width;
-           let height = img.height;
-           if (width > height) {
-               if (width > MAX_WIDTH) {
-                   height *= MAX_WIDTH / width;
-                   width = MAX_WIDTH;
-               }
-           } else {
-               if (height > MAX_HEIGHT) {
-                   width *= MAX_HEIGHT / height;
-                   height = MAX_HEIGHT;
-               }
-           }
-           canvas.width = width;
-           canvas.height = height;
-           const ctx = canvas.getContext('2d');
-           if (ctx) {
-             ctx.drawImage(img, 0, 0, width, height);
-             const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
-             setStudentIdImage(dataUrl);
-           }
-       };
-       img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
-  };
-
   const handleFinalSubmit = async () => {
     if (!paymentScreenshot) {
         toast.error("Please upload payment screenshot.");
@@ -263,22 +219,22 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
         const expiryDate = new Date();
         expiryDate.setDate(expiryDate.getDate() + 30);
         
-        const studentInfo = isStudent ? {
-            isStudent: true,
-            rollNumber,
-            courseBranch,
-            studentIdImage,
-            discountRecieved: 100
-        } : null;
-
-        const trialOfferInfo = null;
+        let studentInfo = null;
+        if (isStudent && studentIdImage) {
+           studentInfo = {
+               isStudent: true,
+               studentIdImage: studentIdImage,
+               discountRecieved: baseAmount - (customAmount || 0),
+           };
+        }
 
         const newSubInfo = {
            status: 'active',
            planName: planWithCustomAmount.name,
            planId: planWithCustomAmount.id.toString(),
            isPaused: false,
-           startDate: new Date().toISOString(),
+           startDate: startDate || new Date().toISOString(),
+           deliveryTime: deliveryTime || 'Not Selected',
            renewalDate: expiryDate.toISOString(),
            expiryDate: expiryDate.toISOString(),
            paymentId: paymentId,
@@ -286,8 +242,7 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
            paymentStatus: 'Pending Verification',
            screenshot: paymentScreenshot,
            transactionId: transactionId,
-           studentInfo,
-           trialOfferInfo
+           ...(studentInfo && { studentInfo })
         };
 
         // Save to Firestore payments collection
@@ -299,10 +254,11 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
             status: "Pending Verification",
             plan: planWithCustomAmount.name,
             createdAt: new Date().toISOString(),
+            startDate: startDate || new Date().toISOString(),
+            deliveryTime: deliveryTime || 'Not Selected',
             screenshot: paymentScreenshot,
             transactionId: transactionId,
-            studentInfo,
-            trialOfferInfo
+            ...(studentInfo && { studentInfo })
         });
 
         // Save to Users collection
@@ -342,14 +298,12 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
         setCheckoutStep(4); // Success
 
         let uploadedScreenshotsCount = 1; // payment receipt is 1
-        if (isStudent && studentIdImage) uploadedScreenshotsCount++;
 
         let whatsappMsg = '';
         const adminUrl = typeof window !== 'undefined' ? window.location.origin + '/dashboard' : 'https://gharkaswaadngp.vercel.app/dashboard';
         
-        let commonText = `Name: ${sheetData.name}\nContact: ${sheetData["mobile no"]}\nAddress: ${sheetData.location}\nPlan: ${sheetData.plan}\nAmount Paid: ₹${customAmount}\n\nKDK Student: ${isStudent ? 'Yes' : 'No'}${isStudent ? `\nRoll No: ${rollNumber}` : ''}\n\nUploads and Images:\n`;
+        let commonText = `Name: ${sheetData.name}\nContact: ${sheetData["mobile no"]}\nAddress: ${sheetData.location}\nPlan: ${sheetData.plan}\nAmount Paid: ₹${customAmount}\n\nUploads and Images:\n`;
         if (paymentScreenshot) commonText += `Payment Receipt: View on Dashboard -> ${adminUrl}\n`;
-        if (isStudent && studentIdImage) commonText += `Student ID Card: View on Dashboard -> ${adminUrl}\n`;
 
         if (selectedPlan.id === 0) {
             whatsappMsg = `New Ghar Ka Swaad Trial Request\n\n${commonText}\nPlease verify and approve.`;
@@ -381,7 +335,7 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
           <p className="text-gray-600 text-lg">Choose a plan that fits your lifestyle. No hidden charges. Pause or cancel anytime.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 xl:gap-8 items-stretch max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 xl:gap-8 items-stretch max-w-7xl mx-auto">
           {BRAND_DATA.plans.map((plan, idx) => (
             <motion.div
               key={plan.id}
@@ -404,9 +358,6 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
               )}
               
               <div className="mb-6">
-                <div className="bg-blue-50 text-blue-600 text-[10px] font-bold uppercase py-1 px-2 rounded flex items-center justify-center gap-1 mb-3 border border-blue-100">
-                  <span role="img" aria-label="student">🎓</span> KDK Student Offer Available
-                </div>
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-gray-400">
                     {plan.id === 0 && <Utensils size={24} />}
@@ -498,110 +449,84 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
                      </div>
                   )}
 
-                  <div className="w-full text-left bg-gray-50 border border-gray-100 p-6 rounded-2xl mb-6">
-                    <p className="text-gray-800 font-bold mb-4">Are you a KDK College Student?</p>
-                    
-                    <div className="flex gap-4 w-full mb-6 relative z-10">
-                      <button 
-                        onClick={() => setIsStudent(true)}
-                        className={`flex-1 py-3 rounded-xl border-2 font-bold transition-all ${isStudent === true ? 'border-brand-primary bg-brand-primary/5 text-brand-primary' : 'border-gray-200 text-gray-500 hover:border-brand-primary/50 bg-white'}`}
-                      >
-                        Yes, I am
-                      </button>
-                      <button 
-                        onClick={() => setIsStudent(false)}
-                        className={`flex-1 py-3 rounded-xl border-2 font-bold transition-all ${isStudent === false ? 'border-brand-primary bg-brand-primary/5 text-brand-primary' : 'border-gray-200 text-gray-500 hover:border-brand-primary/50 bg-white'}`}
-                      >
-                        No
-                      </button>
+                  {selectedPlan.id === 1 && (
+                     <div className="w-full text-left bg-blue-50 border border-blue-100 rounded-2xl p-6 mb-6">
+                        <h4 className="font-bold text-blue-800 mb-4">Student Discount Available</h4>
+                        <label className="flex items-center gap-3 cursor-pointer mb-4 bg-white p-3 rounded-xl border border-blue-100 hover:bg-blue-50/50 transition-colors">
+                           <input type="checkbox" className="w-5 h-5 accent-blue-600" checked={isStudent} onChange={(e) => setIsStudent(e.target.checked)} />
+                           <span className="font-bold text-gray-700">I am a student (₹500 Discount)</span>
+                        </label>
+
+                        {isStudent && (
+                          <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                             <div>
+                               <label className="block text-sm font-bold text-gray-700 mb-1">Student ID Card Photo *</label>
+                               <div className="relative border-2 border-dashed border-blue-200 rounded-xl p-4 text-center hover:bg-blue-50/50 transition-colors cursor-pointer bg-white">
+                                 <input type="file" accept="image/*" onChange={(e) => handleDynamicImageUpload(e, setStudentIdImage)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                 {studentIdImage ? (
+                                    <div className="flex flex-col items-center">
+                                      <img src={studentIdImage} alt="ID" className="h-20 object-contain mb-2 rounded" />
+                                      <span className="text-sm text-green-600 font-bold flex items-center gap-1"><CheckCircle2 size={16}/> Uploaded</span>
+                                    </div>
+                                 ) : (
+                                    <div className="flex flex-col items-center text-gray-500">
+                                      <UploadCloud size={24} className="mb-2 text-blue-400" />
+                                      <span className="text-sm">Tap to upload ID Card</span>
+                                    </div>
+                                 )}
+                               </div>
+                             </div>
+                          </div>
+                        )}
+                     </div>
+                  )}
+
+                  <div className="w-full text-left bg-gray-50 border border-gray-100 rounded-2xl p-6 mb-6">
+                    <h4 className="font-bold text-gray-800 mb-4">Delivery Preferences</h4>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Start Date *</label>
+                        <input 
+                          type="date" 
+                          min={new Date().toISOString().split('T')[0]}
+                          value={startDate} 
+                          onChange={(e) => setStartDate(e.target.value)} 
+                          className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Delivery Time *</label>
+                        <select 
+                          value={deliveryTime} 
+                          onChange={(e) => setDeliveryTime(e.target.value)} 
+                          className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-colors"
+                        >
+                          <option value="">Select Time</option>
+                          <option value="Morning (9:00 AM - 12:00 PM)">Morning (9:00 AM - 12:00 PM)</option>
+                          <option value="Night (7:30 PM - 9:00 PM)">Night (7:30 PM - 9:00 PM)</option>
+                          {selectedPlan.meals_per_day === 2 && (
+                            <option value="Both (Morning & Night)">Both (Morning & Night)</option>
+                          )}
+                        </select>
+                      </div>
                     </div>
-
-                    {isStudent === true && (
-                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="w-full text-left space-y-4">
-                        {selectedPlan.id !== 0 && (
-                            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-3 mb-4">
-                               <span className="text-2xl mt-1">🎓</span>
-                               <div>
-                                  <p className="font-bold text-blue-700">₹100 Student Discount Applied!</p>
-                                  <p className="text-xs text-blue-600">Please provide your details below.</p>
-                               </div>
-                            </div>
-                        )}
-                        {selectedPlan.id === 0 && (
-                            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-3 mb-4">
-                               <span className="text-2xl mt-1">🎓</span>
-                               <div>
-                                  <p className="font-bold text-blue-700">Student Details Required</p>
-                                  <p className="text-xs text-blue-600">Please provide your student details to verify your identity.</p>
-                               </div>
-                            </div>
-                        )}
-                        
-                        <div>
-                          <label className="block text-sm font-bold text-gray-700 mb-2">Upload Student ID Card</label>
-                          <div className={`w-full aspect-video rounded-2xl border-2 border-dashed flex flex-col items-center justify-center overflow-hidden transition-all relative ${studentIdImage ? 'border-green-500 bg-green-50' : 'border-gray-300 hover:border-brand-primary bg-white'}`}>
-                            {studentIdImage ? (
-                              <img src={studentIdImage} alt="ID Card" className="w-full h-full object-contain" />
-                            ) : (
-                              <>
-                                <UploadCloud size={32} className="text-gray-400 mb-2" />
-                                <p className="text-sm text-gray-500">Tap to upload ID</p>
-                              </>
-                            )}
-                            <input 
-                              type="file" 
-                              accept="image/*" 
-                              onChange={handleStudentIdUpload} 
-                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">Roll Number</label>
-                            <input 
-                              type="text" 
-                              value={rollNumber}
-                              onChange={(e) => setRollNumber(e.target.value)}
-                              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-primary outline-none"
-                              placeholder="e.g. 45"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">Branch/Course</label>
-                            <input 
-                              type="text" 
-                              value={courseBranch}
-                              onChange={(e) => setCourseBranch(e.target.value)}
-                              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-primary outline-none"
-                              placeholder="e.g. CSE"
-                            />
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
                   </div>
 
                   <button 
                     onClick={() => {
-                        if (isStudent === null) {
-                            toast.error("Please answer if you are a KDK student");
-                            return;
+                        if (!startDate || !deliveryTime) {
+                           toast.error("Please select a start date and delivery time");
+                           return;
                         }
-                        
-                        let finalAmt = baseAmount;
-                        if (selectedPlan.id === 0) {
-                            if (isStudent) {
-                                finalAmt = 59; // Student trial price
-                            } else {
-                                finalAmt = baseAmount; // 79 otherwise
-                            }
-                        } else if (selectedPlan.id !== 0 && isStudent) {
-                            finalAmt -= 100; // Monthly KDK discount
+                        if (isStudent) {
+                           if (!studentIdImage) {
+                              toast.error("Please upload your student ID to claim the discount");
+                              return;
+                           }
+                           setCustomAmount(baseAmount - 500);
+                        } else {
+                           setCustomAmount(baseAmount);
                         }
-                        setCustomAmount(finalAmt);
-                        
                         setCheckoutStep(1);
                     }}
                     className="w-full py-4 rounded-2xl font-bold bg-brand-primary text-white transition-all hover:bg-brand-dark hover:scale-105 active:scale-95"
