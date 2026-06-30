@@ -32,23 +32,20 @@ export default function EnquiryModal({ isOpen, onClose }: EnquiryModalProps) {
     setIsSubmitting(true);
     
     try {
-      const response = await fetch('https://script.google.com/macros/s/AKfycbz_Nm0AmBWOGoskh3Jd2_Z3o3f5B9hxeTHHm64EOupTLGtYKo0fCB5nhYborDUxwGtp6Q/exec', {
+      await fetch('https://script.google.com/macros/s/AKfycbz_Nm0AmBWOGoskh3Jd2_Z3o3f5B9hxeTHHm64EOupTLGtYKo0fCB5nhYborDUxwGtp6Q/exec', {
         method: 'POST',
+        mode: 'no-cors',
         headers: {
           'Content-Type': 'text/plain;charset=utf-8', // Use text/plain for CORS to bypass preflight issues with Apps Script
         },
         body: JSON.stringify(formData)
       });
       
-      const result = await response.json();
-      
-      if (result.success) {
-        toast.success("Enquiry sent successfully! Our team will contact you shortly.");
-        setFormData({ name: '', phone: '', address: '', area: '', plan: 'Trial Offer', startDate: '', deliveryTime: '' });
-        onClose();
-      } else {
-        throw new Error(result.message || 'Something went wrong');
-      }
+      // With no-cors mode, the response is opaque and we cannot read response.json()
+      // If the fetch doesn't throw a network error, we assume it was successfully dispatched.
+      toast.success("Enquiry sent successfully! Our team will contact you shortly.");
+      setFormData({ name: '', phone: '', address: '', area: '', plan: 'Trial Offer', startDate: '', deliveryTime: '' });
+      onClose();
     } catch (error) {
       console.error('Error submitting form:', error);
       toast.error("Failed to submit enquiry. Please try again.");
