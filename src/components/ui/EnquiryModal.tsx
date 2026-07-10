@@ -31,6 +31,9 @@ export default function EnquiryModal({ isOpen, onClose }: EnquiryModalProps) {
     
     setIsSubmitting(true);
     
+    // Open window immediately to avoid popup blockers, then redirect it
+    const newWindow = window.open('about:blank', '_blank');
+    
     try {
       await fetch('https://script.google.com/macros/s/AKfycbwWMunTlrjiS2VJUuKj4TxPj7U9xH34NzkDZjRp6GceZH43Oc70yFBqVImaCLNp5Wuo7Q/exec', {
         method: 'POST',
@@ -46,14 +49,17 @@ export default function EnquiryModal({ isOpen, onClose }: EnquiryModalProps) {
       
       const whatsappMsg = `New Enquiry!\n\nName: ${formData.name}\nPhone: ${formData.phone}\nArea: ${formData.area}\nAddress: ${formData.address}\nInterested In: ${formData.plan}\nStart Date: ${formData.startDate}\nDelivery Time: ${formData.deliveryTime}`;
       
-      setTimeout(() => {
-        window.open(`https://wa.me/918275116821?text=${encodeURIComponent(whatsappMsg)}`, '_blank');
-      }, 500);
+      if (newWindow) {
+         newWindow.location.href = `https://wa.me/918275116821?text=${encodeURIComponent(whatsappMsg)}`;
+      } else {
+         window.location.href = `https://wa.me/918275116821?text=${encodeURIComponent(whatsappMsg)}`;
+      }
 
       toast.success("Enquiry sent successfully! Our team will contact you shortly.");
       setFormData({ name: '', phone: '', address: '', area: '', plan: 'Trial Offer', startDate: '', deliveryTime: '' });
       onClose();
     } catch (error) {
+      if (newWindow) newWindow.close();
       console.error('Error submitting form:', error);
       toast.error("Failed to submit enquiry. Please try again.");
     } finally {

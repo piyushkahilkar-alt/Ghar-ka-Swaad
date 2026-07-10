@@ -279,25 +279,6 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
             deliveryTime: deliveryTime || 'Not Selected'
         };
         
-        fetch("https://script.google.com/macros/s/AKfycbwWMunTlrjiS2VJUuKj4TxPj7U9xH34NzkDZjRp6GceZH43Oc70yFBqVImaCLNp5Wuo7Q/exec", {
-           method: "POST",
-           mode: "no-cors",
-           headers: { "Content-Type": "text/plain;charset=utf-8" },
-           body: JSON.stringify(sheetData)
-        }).catch(err => console.error("Webhook error: ", err));
-
-        // Update local state
-        const updatedUser = { ...userObj, subscription: newSubInfo };
-        if (sessionStorage.getItem('user')) {
-            sessionStorage.setItem('user', JSON.stringify(updatedUser));
-        } else {
-            localStorage.setItem('user', JSON.stringify(updatedUser));
-        }
-
-        setCheckoutStep(4); // Success
-
-        let uploadedScreenshotsCount = 1; // payment receipt is 1
-
         let whatsappMsg = '';
         const adminUrl = typeof window !== 'undefined' ? window.location.origin + '/dashboard' : 'https://gharkaswaadngp.vercel.app/dashboard';
         
@@ -310,10 +291,32 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
             whatsappMsg = `New Ghar Ka Swaad Order\n\n${commonText}Transaction ID: ${transactionId || paymentId}\n\nPayment Completed Successfully.\nPlease verify.`;
         }
 
-        setTimeout(() => {
-            window.open(`https://wa.me/918275116821?text=${encodeURIComponent(whatsappMsg)}`, '_blank');
-            if (onNavigate) onNavigate('dashboard');
-        }, 3000);
+        // Open window immediately to avoid popup blockers
+        const newWindow = window.open('about:blank', '_blank');
+
+        fetch("https://script.google.com/macros/s/AKfycbwWMunTlrjiS2VJUuKj4TxPj7U9xH34NzkDZjRp6GceZH43Oc70yFBqVImaCLNp5Wuo7Q/exec", {
+           method: "POST",
+           mode: "no-cors",
+           headers: { "Content-Type": "text/plain;charset=utf-8" },
+           body: JSON.stringify(sheetData)
+        }).catch(err => console.error("Webhook error: ", err)).finally(() => {
+           if (newWindow) {
+              newWindow.location.href = `https://wa.me/918275116821?text=${encodeURIComponent(whatsappMsg)}`;
+           } else {
+              window.location.href = `https://wa.me/918275116821?text=${encodeURIComponent(whatsappMsg)}`;
+           }
+           if (onNavigate) setTimeout(() => onNavigate('dashboard'), 500);
+        });
+
+        // Update local state
+        const updatedUser = { ...userObj, subscription: newSubInfo };
+        if (sessionStorage.getItem('user')) {
+            sessionStorage.setItem('user', JSON.stringify(updatedUser));
+        } else {
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+        }
+
+        setCheckoutStep(4); // Success
 
     } catch (err: any) {
         toast.error("Error saving payment: " + err.message);
