@@ -43,6 +43,13 @@ export default function EnquiryModal({ isOpen, onClose }: EnquiryModalProps) {
       
       // With no-cors mode, the response is opaque and we cannot read response.json()
       // If the fetch doesn't throw a network error, we assume it was successfully dispatched.
+      
+      const whatsappMsg = `New Enquiry!\n\nName: ${formData.name}\nPhone: ${formData.phone}\nArea: ${formData.area}\nAddress: ${formData.address}\nInterested In: ${formData.plan}\nStart Date: ${formData.startDate}\nDelivery Time: ${formData.deliveryTime}`;
+      
+      setTimeout(() => {
+        window.open(`https://wa.me/918275116821?text=${encodeURIComponent(whatsappMsg)}`, '_blank');
+      }, 500);
+
       toast.success("Enquiry sent successfully! Our team will contact you shortly.");
       setFormData({ name: '', phone: '', address: '', area: '', plan: 'Trial Offer', startDate: '', deliveryTime: '' });
       onClose();

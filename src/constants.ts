@@ -35,7 +35,7 @@ export const BRAND_DATA = {
       id: 1,
       name: "Daily Veg Plan",
       price_per_meal: 116,
-      monthly_price: 3499,
+      monthly_price: 3599,
       meals_per_day: 2,
       menu: ["Fresh Sabzi & Dal Tadka", "Rice & Rotis", "Salad & Aachar", "Morning Off, Night meal on Sundays"],
       target: "Regular Meals",
@@ -45,9 +45,9 @@ export const BRAND_DATA = {
       id: 2,
       name: "Non-Veg Plan",
       price_per_meal: 150,
-      monthly_price: 4499,
+      monthly_price: 3999,
       meals_per_day: 2,
-      menu: ["Chicken/Egg Curry (3 Days/Week)", "Veg Meals (4 Days/Week)", "Rice & Rotis", "Salad & Aachar"],
+      menu: ["Chicken (1 Time/Week)", "Egg (2 Times/Week)", "Weekly One Time Off", "Rice & Rotis", "Salad & Aachar"],
       target: "Non-Veg Lovers",
       description: "Delicious non-veg and veg mixed meals delivered daily."
     }

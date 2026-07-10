@@ -270,20 +270,19 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
         // Send to Google Sheets Webhook
         const addressJoined = [userObj.address, userObj.landmark, userObj.city].filter(Boolean).join(', ');
         const sheetData = {
-            "name": userObj.name || userObj.displayName || "Not Provided",
-            "contact": userObj.phone || userObj.phoneNumber || userObj.email || "Not Provided",
-            "mobile no": userObj.phone || userObj.phoneNumber || userObj.email || "Not Provided",
-            "location": addressJoined || "Not Provided",
-            "plan": planWithCustomAmount.name || "Not Provided",
-            "amount": customAmount || 0,
-            "amount paid": customAmount || 0,
-            "query": userObj.userQuery || "Not Provided",
-            "date": new Date().toLocaleString()
+            name: userObj.name || userObj.displayName || "Not Provided",
+            phone: userObj.phone || userObj.phoneNumber || userObj.email || "Not Provided",
+            area: userObj.city || "Not Provided",
+            address: addressJoined || "Not Provided",
+            plan: planWithCustomAmount.name || "Not Provided",
+            startDate: startDate || new Date().toISOString().split('T')[0],
+            deliveryTime: deliveryTime || 'Not Selected'
         };
-        fetch("https://script.google.com/macros/s/AKfycbza3rOBAMdqHo8nz8OCwXBR5bL2Ia7ZPEDeoyFVmrX04X_eGRtzIk9b3x4NH8bIrqQi/exec", {
+        
+        fetch("https://script.google.com/macros/s/AKfycbwWMunTlrjiS2VJUuKj4TxPj7U9xH34NzkDZjRp6GceZH43Oc70yFBqVImaCLNp5Wuo7Q/exec", {
            method: "POST",
            mode: "no-cors",
-           headers: { "Content-Type": "text/plain" },
+           headers: { "Content-Type": "text/plain;charset=utf-8" },
            body: JSON.stringify(sheetData)
         }).catch(err => console.error("Webhook error: ", err));
 
@@ -302,7 +301,7 @@ export default function PlansPage({ onNavigate }: { onNavigate?: (page: any) => 
         let whatsappMsg = '';
         const adminUrl = typeof window !== 'undefined' ? window.location.origin + '/dashboard' : 'https://gharkaswaadngp.vercel.app/dashboard';
         
-        let commonText = `Name: ${sheetData.name}\nContact: ${sheetData["mobile no"]}\nAddress: ${sheetData.location}\nPlan: ${sheetData.plan}\nAmount Paid: ₹${customAmount}\n\nUploads and Images:\n`;
+        let commonText = `Name: ${sheetData.name}\nContact: ${sheetData.phone}\nAddress: ${sheetData.address}\nPlan: ${sheetData.plan}\nAmount Paid: ₹${customAmount}\n\nUploads and Images:\n`;
         if (paymentScreenshot) commonText += `Payment Receipt: View on Dashboard -> ${adminUrl}\n`;
 
         if (selectedPlan.id === 0) {
